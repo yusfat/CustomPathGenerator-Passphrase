@@ -3,11 +3,12 @@ import secrets
 import string
 import hashlib
 import hmac
+import subprocess
 
-# hard limit for derivation index
 MAX_INDEX = 2147483647
 
-# big pools of characters used for noise later
+# Character pools to be used later for adding noise to the custom path index - obfuscation
+
 EXTRA_UNIQUE_EMOJIS = (
     '🧿🪩🪽🫀🫁🫦🫅🐍💻🛜🇸🇨🇷🇪🇷🇴🇷🇸🇷🇺🇷🇼🇸🇦🇸🇧🇸🇻🇸🇾🇺🇳🇿🇦🇾🇪🇺🇬🇺🇦🇹🇲🇹🇨🏴󠁧󠁢󠁳󠁣󠁴󠁿🏴󠁧󠁢󠁷󠁬󠁳󠁿🇽🇰🇼🇸🇼🇫🇻🇳🇭🇹🇺🇸🇺🇾🇹🇼🇹🇹🇹🇨🇹🇨🎺🎷플루мары🧶드럼롱🎙️🎛️슬라이더🐦‍⬛🦜🐦🦧🦍🐒🦨🦡🦔🐓🦦🐳🪼🐙🦑🦀🦞🦐🐡🐠🐚🐌🐞🐝🪰蟑螂蚊子病毒蠕虫🐛🦋蚂蚁蟋蟀🐾🍊🍑🍉🌶️🍅🍎🍒🍓🥕🥭🫛🥒🫐🫘🌰🇹🇲🥞🥩🍗🫔🍕🥗🍡🍤🍣🦞🍬🔪🛟🇹🇳🇹🇴🇺🇬🇸🇲🇸🇪'
     '🫧🫷🫸🪽🦫🦦🦥🦣🦬𓀀𓀁𓀂𓀃𓀄𓀅𓀆𓀇𓀈𓀉𓀊𓀋𓀌𓀍𓀎𓀏'
@@ -42,4 +43,9 @@ SCRIPTS = (
     '一二三四五六七八九十百千万亿ワヤ二ヴヶ'
     'אבגדהוזחטיכלמנסעפצקרשת'
 )
-print("successfull")
+
+BANNED = {'/', '\\', '"', "'"}
+SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
+ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
+
+print("constants and character pools loaded")
