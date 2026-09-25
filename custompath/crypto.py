@@ -1,32 +1,21 @@
-# ====================== custompath/generator.py ======================
+# ====================== custompath/crypto.py ======================
+import secrets
 import hashlib
 import hmac
-import secrets
-from .crypto import generate_strong_salt, secure_choice
-from .config import MAX_INDEX, EXTRA_UNIQUE_EMOJIS, EMOJI_POOL
+import string
+from .config import *
 
-def generate_path(final_salt: str = "", target_len: int = 2000) -> str:
-    if not final_salt:
-        final_salt = generate_strong_salt()
+def generate_strong_salt(min_len: int = 60, max_len: int = 180) -> str:
+    length = secrets.randbelow(max_len - min_len + 1) + min_len
+    chars = string.ascii_letters + string.digits + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS
+    return ''.join(secrets.choice(chars) for _ in range(length))
 
-    salt_bytes = hashlib.sha3_512(final_salt.encode()).digest()
-    levels = secrets.randbelow(80) + 220
-    parts = ['m']
-    counter = 0
+def multi_layer_salt(base_salt: str, layers: int = 8, iterations: int = 100000) -> str:
+    current = base_salt.encode()
+    for _ in range(max(3, min(layers, 15))):
+        current = hashlib.pbkdf2_hmac('sha256', current, b'custompath_stretch', iterations)
+    return current.hex()
 
-    for _ in range(levels):
-        h = hmac.new(salt_bytes, f"i{counter}".encode(), hashlib.sha256).digest()
-        idx = int.from_bytes(h[:4], 'big') % MAX_INDEX
-        parts.append(f"{idx}'")
-        counter += 1
-
-        noise_char = secure_choice(EXTRA_UNIQUE_EMOJIS + EMOJI_POOL, salt_bytes, counter)
-        parts.append(noise_char)
-        counter += 1
-
-    path = '/'.join(parts)
-
-    if len(path) > target_len:
-        path = path[:target_len].rstrip('/') + "/0'/0"
-
-    return path
+def secure_choice(seq, salt_bytes, counter):
+    h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha256).digest()
+    return seq[int.from_bytes(h[:8], 'big') % len(seq)]
