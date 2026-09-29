@@ -118,7 +118,7 @@ def main():
             if copy_text(passphrase):
                 print("✅ Passphrase copied to clipboard!")
             else:
-                print("⚠️  Please copy the passphrase manually.")
+                print("⚠️  Please copy the passphrase manually. NOTE: YOU CAN USE IT AS PASSPHRASE (13th or 25th word on top your mnemonic seedphrase) IF U WISH; IT'S BEEN TESTED TO WORK. YOU CAN TEST IT TOO.")
 
         print("\nIMPORTANT FINAL CHECKLIST:")
         print("• Save ONLY the FINAL path and passphrase in Bitwarden / KeePass / 1Password")
