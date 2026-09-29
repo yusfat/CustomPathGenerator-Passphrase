@@ -2,20 +2,55 @@
 import secrets
 import hashlib
 import hmac
+import os
 import string
-from .config import *
+from .pools import *
 
-def generate_strong_salt(min_len: int = 60, max_len: int = 180) -> str:
+BANNED = {'/', '\\', '"', "'"}
+SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
+ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
+
+def make_system_salt() -> tuple[bytes, str]:
+    salt = os.urandom(512)
+    for _ in range(5):
+        salt = hashlib.sha3_512(salt).digest() + hashlib.sha512(salt).digest()
+    for _ in range(3):
+        salt = hashlib.sha512(salt).digest()
+        salt = hashlib.sha3_512(salt).digest()
+    stretched = hashlib.pbkdf2_hmac(
+        'sha3_512',
+        salt,
+        b"advanced_path_generator_v200",
+        5000000
+    )
+    return stretched, stretched.hex()
+
+def make_random_salt(min_len=60, max_len=180) -> str:
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-    chars = string.ascii_letters + string.digits + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS
+    chars = ASCII_NOISE + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS + ''.join(SCRIPTS) + ''.join(INVISIBLES)
     return ''.join(secrets.choice(chars) for _ in range(length))
 
-def multi_layer_salt(base_salt: str, layers: int = 8, iterations: int = 100000) -> str:
-    current = base_salt.encode()
-    for _ in range(max(3, min(layers, 15))):
-        current = hashlib.pbkdf2_hmac('sha256', current, b'custompath_stretch', iterations)
-    return current.hex()
-
-def secure_choice(seq, salt_bytes, counter):
-    h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha256).digest()
+def pick_from(seq, salt_bytes, counter):
+    h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha3_512).digest()
     return seq[int.from_bytes(h[:8], 'big') % len(seq)]
+
+def make_noise(salt_bytes, counter, min_len=12, max_len=55):
+    length = secrets.randbelow(max_len - min_len + 1) + min_len
+    parts = []
+    for _ in range(length):
+        r = int.from_bytes(hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1], 'big') % 100
+        counter += 1
+        if r < 15:
+            parts.append(pick_from(INVISIBLES, salt_bytes, counter))
+        elif r < 28:
+            parts.append(pick_from(SPACES, salt_bytes, counter))
+        elif r < 43:
+            parts.append(pick_from(EMOJI_POOL, salt_bytes, counter))
+        elif r < 58:
+            parts.append(pick_from(EXTRA_UNIQUE_EMOJIS, salt_bytes, counter))
+        elif r < 78:
+            parts.append(pick_from(SCRIPTS, salt_bytes, counter))
+        else:
+            parts.append(pick_from(ASCII_NOISE, salt_bytes, counter))
+        counter += 1
+    return ''.join(parts), counter
