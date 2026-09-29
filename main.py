@@ -45,7 +45,7 @@ def main():
             print("\n--- ADVANCED MODE ---")
             print("1. Pure random (no personal salt)")
             print("2. Single personal salt (deterministic)")
-            print("3. Salt chaining / key stretching (strongest)")
+            print("3. Salt chaining / key stretching - non-deterministic on purpose & doesn't require storing internal salts (strongest)")
             choice = input("Choose option (1/2/3): ").strip()
 
             if choice == '3':
