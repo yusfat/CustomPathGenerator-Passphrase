@@ -51,19 +51,3 @@ def make_noise(salt_bytes, counter, min_len=12, max_len=55):
             parts.append(pick_from(ASCII_NOISE, salt_bytes, counter))
         counter += 1
     return ''.join(parts), counter
-
-
-
-.....
-delete 
-...
-
-def make_system_salt() -> tuple[bytes, str]:
-    salt = secrets.token_bytes(64)          # Strong random salt
-    stretched = hashlib.pbkdf2_hmac(
-        'sha3_512',
-        salt,
-        secrets.token_bytes(64),            # ← Fixed: no more hardcoded salt
-        4000000
-    )
-    return stretched, stretched.hex()
