@@ -13,12 +13,7 @@ ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
 
 def make_system_salt() -> tuple[bytes, str]:
     salt = secrets.token_bytes(64)          # Strong random salt
-    stretched = hashlib.pbkdf2_hmac(
-        'sha3_512',
-        salt,
-        secrets.token_bytes(64),            # ← Fixed: no more hardcoded salt
-        4000000
-    )
+    stretched = hashlib.pbkdf2_hmac('sha3_512', salt, secrets.token_bytes(64), 4000000)
     return stretched, stretched.hex()
 
 
