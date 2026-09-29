@@ -1,32 +1,43 @@
 # ====================== custompath/generator.py ======================
+import secrets
 import hashlib
 import hmac
-import secrets
-from .crypto import generate_strong_salt, secure_choice
-from .config import MAX_INDEX, EXTRA_UNIQUE_EMOJIS, EMOJI_POOL
+from .config import MAX_INDEX
+from .crypto import pick_from, make_noise
 
-def generate_path(final_salt: str = "", target_len: int = 2000) -> str:
-    if not final_salt:
-        final_salt = generate_strong_salt()
+def make_number(salt_bytes, counter):
+    h = hmac.new(salt_bytes, f"i{counter}".encode(), hashlib.sha3_512).digest()
+    digits = (int.from_bytes(h[:1], 'big') % 10) + 1
+    if digits == 1:
+        return str(int.from_bytes(h[1:2], 'big') % 10), counter + 1
+    max_val = min(10**digits - 1, MAX_INDEX)
+    val = int.from_bytes(h[1:9], 'big') % (max_val + 1)
+    return str(val), counter + 1
 
-    salt_bytes = hashlib.sha3_512(final_salt.encode()).digest()
+def make_path(final_salt: str, target_len: int) -> str:
+    salt_bytes = hashlib.sha3_512(final_salt.encode('utf-8')).digest()
     levels = secrets.randbelow(80) + 220
     parts = ['m']
     counter = 0
 
-    for _ in range(levels):
-        h = hmac.new(salt_bytes, f"i{counter}".encode(), hashlib.sha256).digest()
-        idx = int.from_bytes(h[:4], 'big') % MAX_INDEX
-        parts.append(f"{idx}'")
-        counter += 1
+    for i in range(levels):
+        idx, counter = make_number(salt_bytes, counter)
+        if i < 200:
+            parts.append(idx + "'")
+        else:
+            if secrets.randbelow(100) < 75:
+                segment = idx + "'"
+            else:
+                segment = idx
+            noise, counter = make_noise(salt_bytes, counter)
+            parts.append(segment + noise)
 
-        noise_char = secure_choice(EXTRA_UNIQUE_EMOJIS + EMOJI_POOL, salt_bytes, counter)
-        parts.append(noise_char)
-        counter += 1
-
+    parts.append("0")
+    parts.append("0")
     path = '/'.join(parts)
 
     if len(path) > target_len:
-        path = path[:target_len].rstrip('/') + "/0'/0"
-
+        path = path[:target_len]
+        if not path.endswith("/0"):
+            path = path.rstrip("/") + "/0/0"
     return path
