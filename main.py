@@ -1,6 +1,6 @@
 # ====================== main.py ======================
-from new.crypto import make_system_salt, make_random_salt
-from new.generator import make_path
+from custompath.crypto import make_system_salt, make_random_salt
+from custompath.generator import make_path
 import subprocess
 import hashlib
 
