@@ -10,20 +10,17 @@ BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
 ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
 
+
 def make_system_salt() -> tuple[bytes, str]:
-    salt = os.urandom(512)
-    for _ in range(5):
-        salt = hashlib.sha3_512(salt).digest() + hashlib.sha512(salt).digest()
-    for _ in range(3):
-        salt = hashlib.sha512(salt).digest()
-        salt = hashlib.sha3_512(salt).digest()
+    salt = secrets.token_bytes(64)          # Strong random salt
     stretched = hashlib.pbkdf2_hmac(
         'sha3_512',
         salt,
-        b"advanced_path_generator_v200",
-        5000000
+        secrets.token_bytes(64),            # ← Fixed: no more hardcoded salt
+        4000000
     )
     return stretched, stretched.hex()
+
 
 def make_random_salt(min_len=60, max_len=180) -> str:
     length = secrets.randbelow(max_len - min_len + 1) + min_len
@@ -54,3 +51,19 @@ def make_noise(salt_bytes, counter, min_len=12, max_len=55):
             parts.append(pick_from(ASCII_NOISE, salt_bytes, counter))
         counter += 1
     return ''.join(parts), counter
+
+
+
+.....
+delete 
+...
+
+def make_system_salt() -> tuple[bytes, str]:
+    salt = secrets.token_bytes(64)          # Strong random salt
+    stretched = hashlib.pbkdf2_hmac(
+        'sha3_512',
+        salt,
+        secrets.token_bytes(64),            # ← Fixed: no more hardcoded salt
+        4000000
+    )
+    return stretched, stretched.hex()
