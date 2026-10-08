@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import os
 import string
-#from .pools import *
+from .pools import *
 from .emoji_pool import *
 from .emoji_pool_fixed import *
 
