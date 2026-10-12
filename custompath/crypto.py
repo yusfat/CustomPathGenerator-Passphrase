@@ -8,8 +8,7 @@ from .pools import *
 
 BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
-ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
-
+YUSFAT_ASCII_NOISE = list(string.ascii_letters + string.digits + SAFE_PUNCT)
 
 def make_system_salt() -> tuple[bytes, str]:
     salt = secrets.token_bytes(64)          # Strong random salt
@@ -22,7 +21,7 @@ def make_random_salt(min_len=60, max_len=180) -> str:
 
 # changing chars to YUSFAT_NOISE_POOL
 
-    YUSFAT_NOISE_POOL = ASCII_NOISE + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS + ''.join(SCRIPTS) + ''.join(INVISIBLES)
+    YUSFAT_NOISE_POOL = YUSFAT_ASCII_NOISE + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS + ''.join(SCRIPTS) + ''.join(INVISIBLES)
     return ''.join(secrets.choice(YUSFAT_NOISE_POOL) for _ in range(length))
 
 def pick_from(seq, salt_bytes, counter):
@@ -46,6 +45,6 @@ def make_noise(salt_bytes, counter, min_len=12, max_len=55):
         elif r < 78:
             parts.append(pick_from(SCRIPTS, salt_bytes, counter))
         else:
-            parts.append(pick_from(ASCII_NOISE, salt_bytes, counter))
+            parts.append(pick_from(YUSFAT_ASCII_NOISE, salt_bytes, counter))
         counter += 1
     return ''.join(parts), counter
