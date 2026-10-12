@@ -51,6 +51,6 @@ def make_noise(salt_bytes, counter, min_len=12, max_len=55):
         elif r < 78:
             parts.append(pick_from(SCRIPTS, salt_bytes, counter))
         else:
-            parts.append(pick_from(YUSFAT_ASCII_NOISE, salt_bytes, counter))
+            parts.append(pick_from(YUSFAT_NOISE_POOL, salt_bytes, counter))
         counter += 1
     return ''.join(parts), counter
