@@ -11,20 +11,37 @@ def copy_text(text: str) -> bool:
     except Exception:
         return False
 
+
 def main():
-    print("🔑🌼1st - 200 Level💥🌼")
-    print("Worked ADVANCED 200 LEVEL CUSTOM DERIVATION PATH GENERATOR v3")
-    print("🔑🌼1st - 200 Level💥🌼")
-    print("WARNING: This tool is for ADVANCED crypto users only.")
-    print("Beginners should use standard derivation paths.")
-    print("Always test with a small amount ($1) first and make sure")
+    print("🌼At least - 200 Levels Deep Non-Standard For Advanced User💥🌼")
+    print("[A 2-IN-1 ADVANCED USER CUSTOM DERIVATION PATH/PASSPHRASE GENERATOR]")
+
+    print("[WARNING] For advanced users only. Standard paths recommended for beginners.")
+    print("WARNING: This tool is for ADVANCED CRYPTO USERS ONLY.")
+    print("BEGINNERS SHOULD USE EXISTING STANDARD DERIVATION PATHS.")
+    print("🛑 STOP NOW IF YOU DON'T UNDERSTAND WHAT YOU'RE DOING.")
+    print("YOU'RE USING THIS AT YOUR OWN RISK DUE TO LOST OF FUND/CRYPTO.")
+
+    print("[SECURITY] Test recovery with only $1 before funding and ensure")
+    print("full recoverability by storing in strong password manager.")
+
+    print("⭕Always test with a small amount ($1) first and make sure")
     print("you can fully recover the wallet before using real funds.")
-    print("Recommended wallets that support custom paths + passphrase:")
-    print("AirGap Vault  |  TokenPocket")
+
+    print("[SUPPORT1] Wallets: AirGap Vault (www.airgapvault.io) &")
+    print("TokenPocket (As BOTH CUSTOM PATH + PASSPHRASE support - Tested)")
+    print("[SUPPORT2] Wallets: Bluewallet, Electrum (ONLY as passphrase support - Also Tested)")
+
+    print("Other services such as Amazon, Coursera etc. that accept emojis in password shall be updated for users to generate secure, unpredictable passwords, later")
+
+    print("[STORAGE] Store final output only in Bitwarden/KeePass or any secure & reputable password manager but not together with seedphrase. Do not expose intermediate salts.\n")
+
+    
     print("Only save the FINAL output in Bitwarden / KeePass / etc.")
     print("Never share or memorize intermediate salts.")
-    print("🔑🌼1st - 200 Level💥🌼")
+    print("🔑🌼== Let's Begin To Ensure Reduction in Stolen Crypto==💥🌼")
 
+    
     while True:
         print("\n" + "="*50)
         mode = input("Are you a Beginner or Advanced user? (b/a): ").strip().lower()
@@ -104,9 +121,10 @@ def main():
         print("SECURITY: HOW TO USE THIS OUTPUT")
         print("-"*60)
         print("Option A: Use this SAME output as BOTH derivation path AND passphrase")
-        print("Option B: For MAXIMUM security, generate a SEPARATE passphrase")
+        print("Option B: For BETTER security, generate a SEPARATE passphrase")
+        print("Option C:For MAXIMUM security, generate a ANOTHER derivation path AND use it as passphrase")
         print("WARNING: If you lose either the path OR passphrase, funds are LOST FOREVER.")
-        print("-"*60)
+        print("- END")
 
         pp_choice = input("\nGenerate a separate passphrase too? (y/n): ").strip().lower()
         if pp_choice == 'y':
