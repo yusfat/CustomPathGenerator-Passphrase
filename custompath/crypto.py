@@ -10,6 +10,15 @@ BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
 YUSFAT_ASCII_NOISE = list(string.ascii_letters + string.digits + SAFE_PUNCT)
 
+# Combined pool at MODULE LEVEL (visible to every function)
+YUSFAT_NOISE_POOL = (
+    YUSFAT_ASCII_NOISE
+    + EMOJI_POOL
+    + EXTRA_UNIQUE_EMOJIS
+    + SCRIPTS
+    + INVISIBLES
+)
+
 def make_system_salt() -> tuple[bytes, str]:
     salt = secrets.token_bytes(64)          # Strong random salt
     stretched = hashlib.pbkdf2_hmac('sha3_512', salt, secrets.token_bytes(64), 4000000)
@@ -18,21 +27,13 @@ def make_system_salt() -> tuple[bytes, str]:
 
 def make_random_salt(min_len=60, max_len=180) -> str:
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-
-# changing chars to YUSFAT_NOISE_POOL
-
-    YUSFAT_NOISE_POOL = (
-    YUSFAT_ASCII_NOISE
-    + EMOJI_POOL
-    + EXTRA_UNIQUE_EMOJIS
-    + SCRIPTS
-    + INVISIBLES
-)
     return ''.join(secrets.choice(YUSFAT_NOISE_POOL) for _ in range(length))
+
 
 def pick_from(seq, salt_bytes, counter):
     h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha3_512).digest()
     return seq[int.from_bytes(h[:8], 'big') % len(seq)]
+
 
 def make_noise(salt_bytes, counter, min_len=12, max_len=55):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
