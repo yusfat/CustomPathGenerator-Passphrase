@@ -43,7 +43,7 @@ def main():
 
     
     while True:
-        print("\n" + "="*50)
+        print("\n" + "="*10)
         mode = input("Are you a Beginner or Advanced user? (b/a): ").strip().lower()
 
         while True:
@@ -68,8 +68,8 @@ def main():
             if choice == '3':
                 layers = 0
                 current = ""
-                print("\nSalt chaining activated (recommended 8–11 layers)")
-                while layers < 11:
+                print("\nSalt chaining activated (recommended 5–7 layers)")
+                while layers < 7:
                     print(f"\n--- Layer {layers+1} ---")
                     gen = input("Generate a strong random salt for this layer? (y/n): ").strip().lower()
                     if gen == 'y':
@@ -106,10 +106,10 @@ def main():
         print("\nGenerating secure derivation path...")
         result = make_path(combined, target_len)
 
-        print("\n" + "="*60)
+        print("\n" + "="*2)
         print("DERIVATION PATH:")
         print(result)
-        print("="*60)
+        print("="*2)
         print(f"Length: {len(result)} characters")
 
         if copy_text(result):
@@ -117,9 +117,9 @@ def main():
         else:
             print("⚠️  Please copy the path manually.")
 
-        print("\n" + "-"*60)
+        print("\n" + "-"*5)
         print("SECURITY: HOW TO USE THIS OUTPUT")
-        print("-"*60)
+        print("-"*5)
         print("Option A: Use this SAME output as BOTH derivation path AND passphrase")
         print("Option B: For BETTER security, generate a SEPARATE passphrase")
         print("Option C:For MAXIMUM security, generate a ANOTHER derivation path AND use it as passphrase")
@@ -129,10 +129,10 @@ def main():
         pp_choice = input("\nGenerate a separate passphrase too? (y/n): ").strip().lower()
         if pp_choice == 'y':
             passphrase = make_random_salt(min_len=80, max_len=200)
-            print("\n" + "="*60)
+            print("\n" + "="*3)
             print("SEPARATE PASSPHRASE:")
             print(passphrase)
-            print("="*60)
+            print("="*2)
             if copy_text(passphrase):
                 print("✅ Passphrase copied to clipboard!")
             else:
