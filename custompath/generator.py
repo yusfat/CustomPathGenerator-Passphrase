@@ -22,15 +22,23 @@ def make_path(final_salt: str, target_len: int) -> str:
 
     for i in range(levels):
         idx, counter = make_number(salt_bytes, counter)
-        if i < 200:
-            parts.append(idx + "'")
+        num = idx
+        hardened = (i < 200) or (secrets.randbelow(100) < 75)
+
+        # Only new part: 8-15% chance of internal noise on large numbers
+        if (100001 <= int(num) <= MAX_INDEX) and (8 <= secrets.randbelow(100) < 15):
+            insert_pos = max(1, int(len(num) * 0.7))
+            noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
+            num = num[:insert_pos] + noise_inside + num[insert_pos:]
+
+        noise, counter = make_noise(salt_bytes, counter, min_len=1, max_len=5)
+
+        if hardened:
+            segment = num + noise + "'" + noise
         else:
-            if secrets.randbelow(100) < 75:
-                segment = idx + "'"
-            else:
-                segment = idx
-            noise, counter = make_noise(salt_bytes, counter)
-            parts.append(segment + noise)
+            segment = num + noise
+
+        parts.append(segment)
 
     parts.append("0")
     parts.append("0")
