@@ -19,8 +19,11 @@ def make_system_salt() -> tuple[bytes, str]:
 
 def make_random_salt(min_len=60, max_len=180) -> str:
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-    chars = ASCII_NOISE + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS + ''.join(SCRIPTS) + ''.join(INVISIBLES)
-    return ''.join(secrets.choice(chars) for _ in range(length))
+
+# changing chars to YUSFAT_NOISE_POOL
+
+    YUSFAT_NOISE_POOL = ASCII_NOISE + EMOJI_POOL + EXTRA_UNIQUE_EMOJIS + ''.join(SCRIPTS) + ''.join(INVISIBLES)
+    return ''.join(secrets.choice(YUSFAT_NOISE_POOL) for _ in range(length))
 
 def pick_from(seq, salt_bytes, counter):
     h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha3_512).digest()
