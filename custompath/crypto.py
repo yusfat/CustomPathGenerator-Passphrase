@@ -25,8 +25,8 @@ def make_random_salt(min_len=60, max_len=180) -> str:
     YUSFAT_ASCII_NOISE
     + EMOJI_POOL
     + EXTRA_UNIQUE_EMOJIS
-    + list(''.join(SCRIPTS))
-    + list(''.join(INVISIBLES))
+    + SCRIPTS
+    + INVISIBLES
 )
     return ''.join(secrets.choice(YUSFAT_NOISE_POOL) for _ in range(length))
 
