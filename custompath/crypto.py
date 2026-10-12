@@ -44,23 +44,26 @@ def pick_from(seq, salt_bytes, counter):
     return seq[int.from_bytes(h[:8], 'big') % len(seq)]
 
 
-def make_noise(salt_bytes, counter, min_len=12, max_len=55):
+def make_noise(salt_bytes, counter, min_len=1, max_len=4):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
     for _ in range(length):
         r = int.from_bytes(hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1], 'big') % 100
         counter += 1
         if r < 15:
-            parts.append(pick_from(INVISIBLES, salt_bytes, counter))
+            char = pick_from(INVISIBLES, salt_bytes, counter)
         elif r < 28:
-            parts.append(pick_from(SPACES, salt_bytes, counter))
+            char = pick_from(SPACES, salt_bytes, counter)
         elif r < 43:
-            parts.append(pick_from(EMOJI_POOL, salt_bytes, counter))
+            char = pick_from(EMOJI_POOL, salt_bytes, counter)
         elif r < 58:
-            parts.append(pick_from(EXTRA_UNIQUE_EMOJIS, salt_bytes, counter))
+            char = pick_from(EXTRA_UNIQUE_EMOJIS, salt_bytes, counter)
         elif r < 78:
-            parts.append(pick_from(SCRIPTS, salt_bytes, counter))
+            char = pick_from(SCRIPTS, salt_bytes, counter)
         else:
-            parts.append(pick_from(YUSFAT_NOISE_POOL, salt_bytes, counter))
+            char = pick_from(YUSFAT_NOISE_POOL, salt_bytes, counter)
+        
+        # CRITICAL: only take the first character so we never get huge blocks
+        parts.append(char[0] if char else '')
         counter += 1
     return ''.join(parts), counter
