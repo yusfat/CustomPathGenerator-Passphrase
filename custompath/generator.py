@@ -41,10 +41,10 @@ def make_path(final_salt: str, target_len: int) -> str:
         else:
             segment = num + noise1
 
-        if hardened:
-            segment = num + noise + "'" + noise
-        else:
-            segment = num + noise
+       # if hardened:
+          #  segment = num + noise + "'" + noise
+       # else:
+         #   segment = num + noise
 
         parts.append(segment)
 
