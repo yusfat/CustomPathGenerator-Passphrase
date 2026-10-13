@@ -182,7 +182,7 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
 ## How to run
 
     git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator-Passphrase
+    cd CustomPath
     python3 -m venv .venv
     source .venv/bin/activate
     python3 main.py
@@ -192,11 +192,13 @@ or
 if that doesn't work, this will definitely work:
 
     git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator-Passphrase
+    cd CustomPath
     python main.py
 
 
-Replace YOUR_USERNAME with your GitHub username. A short pause during system-salt PBKDF2 is normal.
+You can replace or rename folder 📁 name CustomPath to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker.
+
+NB: A normal short level standard path (and an app version) would be released soon...
 
 ---
 
