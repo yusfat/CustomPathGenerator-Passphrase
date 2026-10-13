@@ -20,19 +20,21 @@ Repository: **CustomPathGenerator-Passphrase**
 
 Seed phrases alone are no longer enough.
 
-**February 2025 — Bybit (~$1.5B):** A compromised UI led signers to approve what they *saw*, not what they *signed*. The seed was not the only failure mode.
+**February 2025, Bybit (~$1.5B):** A compromised UI led signers to approve what they *saw*, not what they *signed*. The seed was not the only failure mode.
 
-**2025 — Coldcard weak-RNG reports:** Trusted hardware can still produce weak seed material. A well-stored seed is still weak if entropy at generation was weak.
+**2025 Coldcard weak-RNG reports:** Trusted hardware can still produce weak seed material. A well-stored seed is still weak if entropy at generation was weak.
 
-**Lesson:** Even when you do many things right, the seed can be exposed or weak. A second, independent, high-entropy factor reduces single-point failure.
+**9-10th Oct, 2026:** Also motivated by the October 9-10th, 2026 $86M Ledger supply-chain incident where reseller-implanted devices exfiltrated recovery phrases, this project/tool provides a fully transparent, offline and verifiable method for private key (custom path / passphrase) generation where nothing ever leaves your device.
 
-This tool generates that offline factor: a long, high-entropy string for use as a **BIP39 passphrase** and/or an experimental **custom derivation path**, on top of a standard seed you already protect properly.
+**Lesson:** Even when you do many things right, the seed can be exposed, weak or compromised via supply-chain attack. A second, independent, high-entropy factor such as noise obsfucsation like this tool, reduces a single-point failure.
+
+This tool generates that offline factor: a long, high-entropy string for use as a **BIP39 passphrase** and/or an experimental **custom derivation path**, on top of a standard seed you already protect properly (even though we shall assume it's somehow, unknowingly exposed, to be on a safer side while recognizing the security implications and recoverability factors of using this tool without understanding the risk(s).
 
 This project aims to introduce **entropy noise** in a way that already-tested crypto wallets do not treat as an “invalid index”—notably **TokenPocket** and **AirGap Vault**—so a noisy path string can still resolve for those stacks when their parsers effectively use the numeric index portions.
 
 ### Origin discovery (core of this project)
 
-In **October 2024**, a small manual test used emojis, non-ASCII characters, and other noise inside path segments. Example:
+In **October 2024**, I carried out a small manual test using emojis, non-ASCII characters, and other noise inside path segments. Example:
 
 **Custom path with noise:**
 
@@ -229,6 +231,5 @@ This software is provided **as-is**, without warranty. Digital asset loss can be
 ---
 
 *Protect your sovereignty. Assume breach. Verify recovery.*
-
 
 
