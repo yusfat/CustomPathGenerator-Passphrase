@@ -181,7 +181,7 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
 
 ## How to run
 
-    git clone https://github.com/YOUR_USERNAME/CustomPathGenerator-Passphrase.git
+    git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
     cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
@@ -191,8 +191,8 @@ or
 
 if that doesn't work, this will definitely work:
 
-    git clone https://github.com/YOUR_USERNAME/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator
+    git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+    cd CustomPathGenerator-Passphrase
     python main.py
 
 
