@@ -1,7 +1,7 @@
 
 # CustomPathGenerator-Passphrase
 
-**High-entropy custom path & passphrase generator for offline custody**
+**High-entropy custom path & passphrase generator**
 
 > Assume breach. Verify recovery. Never trust a single factor.
 
@@ -12,48 +12,41 @@
 
 **At least 200 levels deep · Non-standard · Advanced users only**
 
+Repository: **CustomPathGenerator-Passphrase**
+
 ---
 
 ## Why this exists
 
 Seed phrases alone are no longer enough.
 
-**February 2025, Bybit (approx $1.5B):** A compromised UI led signers to approve what they saw, not what they signed. The seed was not the only failure mode.
+**February 2025 — Bybit (~$1.5B):** A compromised UI led signers to approve what they *saw*, not what they *signed*. The seed was not the only failure mode.
 
-**2025, Coldcard weak-RNG reports:** Trusted hardware can still produce weak seed material. A well-stored seed is still weak if entropy at generation was weak.
+**2025 — Coldcard weak-RNG reports:** Trusted hardware can still produce weak seed material. A well-stored seed is still weak if entropy at generation was weak.
 
 **Lesson:** Even when you do many things right, the seed can be exposed or weak. A second, independent, high-entropy factor reduces single-point failure.
 
 This tool generates that offline factor: a long, high-entropy string for use as a **BIP39 passphrase** and/or an experimental **custom derivation path**, on top of a standard seed you already protect properly.
 
----
+This project aims to introduce **entropy noise** in a way that already-tested crypto wallets do not treat as an “invalid index”—notably **TokenPocket** and **AirGap Vault**—so a noisy path string can still resolve for those stacks when their parsers effectively use the numeric index portions.
 
-## Recommended Security Setup: Air-Gap + Multisig
+### Origin discovery (core of this project)
 
-This is not a hot wallet tool. For maximum security, use it as part of an offline custody workflow.
+In **October 2024**, a small manual test used emojis, non-ASCII characters, and other noise inside path segments. Example:
 
-### 1. Air-Gapped Generation (Required for serious funds)
-1. Run this generator on a fully offline, air-gapped computer (never connected to internet).
-2. Generate your custom path and passphrase offline.
-3. Export ONLY the public keys (xpub, zpub) to your online device via QR or USB.
-4. Never expose xpriv, mnemonic, or this generated factor on an online machine.
+**Custom path with noise:**
 
-### 2. Multisig Vault (Prevents bricked funds)
-Do not rely on one exotic path. Use it to create distinct cosigners:
+    m/243😭'/50🔑9'/72🐱'/2032710863🦊💼👇🙏😳&#$7'/75🪑90'/365xyz0'
 
-- **2-of-3 example:** Generate 3 different custom paths on 3 different offline devices.
-- Store each path/passphrase separately from its seed.
-- Result: One compromised seed or one lost path does not compromise the vault.
+**Cleaned path (digits / hardening only):**
 
-This is why multisig matters here: a single lost custom factor can mean permanent loss. Multisig removes that single point of failure.
+    m/243'/50'/72'/2032710863'/75'/365'
 
-### 3. Offline Signing Workflow
-1. Build the transaction online using xpubs (watch-only wallet).
-2. Move the PSBT to your air-gapped device.
-3. Sign offline using seed + custom path/passphrase.
-4. Return signed PSBT to online device to broadcast.
+Both produced the **same** wallet address after that experiment:
 
-Your private keys never leave the offline environment.
+    0x5673170D4cBd2Ca8b186900EE731d38E84E7e5C8
+
+Tweaking alphabets, characters, and digits around that idea led to this project: **noise for human / storage entropy**, while remaining usable in wallets that already accepted such paths in testing—not a claim that every wallet worldwide behaves the same.
 
 ---
 
@@ -64,9 +57,11 @@ Your private keys never leave the offline environment.
 | An offline entropy tool for advanced users | A wallet, exchange, or custodian |
 | A generator of long high-entropy strings | Guaranteed BIP32 support in every app |
 | Useful as a BIP39 passphrase (25th word) | Audited financial software |
-| Local Python, no network for core generation | Protection against phishing or blind signing |
+| Local Python (no network for core generation) | Protection against phishing or blind signing |
+| Built around tested noisy-path behavior on selected wallets | A guarantee that noise is ignored on all firmware/apps |
 
 **Recommended use order**
+
 1. BIP39 passphrase (widest compatibility)
 2. Custom path only where the wallet truly accepts it
 3. Separate path + separate passphrase for stronger separation
@@ -79,50 +74,62 @@ Your private keys never leave the offline environment.
 ## How it works
 
 ### Path construction
+
 1. Input string → **SHA3-512** → key bytes
-2. About **220 to 299** segments under `m/`
-3. Early levels prefer hardened indices (`'`), later levels often hardened (approx 75%)
+2. About **220–299** segments under `m/`
+3. Early levels prefer hardened indices (`'`); later levels often hardened (~75%)
 4. **HMAC-SHA3-512** drives index digits and noise
 5. Noise from invisibles, spaces, emoji/symbols, multi-script characters, non-ASCII letters, ASCII (excluding `/ \ " '`)
-6. Minimum length **2000** characters
+6. Minimum length **2000** characters; trim/ending as implemented in code
 
-### Salts (`main.py`)
+Noise is placed so paths stay in the spirit of the October 2024 finding: rich entropy in the **string you store**, while numeric index structure remains the part many tested UIs effectively care about. **Always verify on your device**; do not assume every app strips noise the same way.
+
+### Salts (main.py)
 
 | Mode | Behavior |
 | :--- | :--- |
 | Beginner / pure random | Fresh **system salt** only |
-| Personal salt | Your salt (50+ chars) + fresh system salt |
-| Salt chaining | Multiple layers (SHA3-512 fold), optional hidden random layers + system salt |
+| Personal salt | Your salt (≥50 chars) + fresh system salt |
+| Salt chaining | Multiple layers (SHA3-512 fold); optional hidden random layers + system salt |
 
-**System salt:** random bytes → **PBKDF2-HMAC-SHA3-512** (high iteration count) → hex mixed into generator input. Not printed.
+**System salt:** random bytes → **PBKDF2-HMAC-SHA3-512** (high iteration count) → hex mixed into the generator input. **Not printed.**
 
-**Critical recovery rule:** Because system salt is new every run, re-typing only a personal salt will NOT recreate the same path. Always save the **final printed output** and any separate passphrase.
+**Critical recovery rule:** Because system salt is new every run, **re-typing only a personal salt will not recreate the same path**. Always save the **final printed output** (and any separate passphrase).
+
+### Interactive inputs (what the tool asks)
+
+When you run main.py, you are guided through:
+
+- **User mode:** Beginner (b) or Advanced (a)
+- **Desired path length:** minimum **2000** characters
+- **Optional personal salt or multi-layer salt chaining:** Advanced mode only
 
 ### Optional separate passphrase
+
 High-entropy string for use as an extra factor (e.g. BIP39 passphrase), stored and labeled separately from the path output.
 
 ---
 
 ## Risk model
 
-| Risk | Without a second factor | With this factor (if wallet uses it) |
+| Risk | Without a second factor | With this factor (if the wallet uses it) |
 | :--- | :--- | :--- |
 | Seed exposed | Seed alone moves funds | Attacker still needs your saved path/passphrase |
 | Weak RNG at seed generation | Vendor trust only | External high-entropy factor raises attack cost |
-| Blind / malicious signing | See is not equal to sign | Does NOT replace verifying transactions |
-| Self-lockout | - | Mandatory small-amount recovery test before real funds |
+| Blind / malicious signing | See ≠ sign | Does **not** replace verifying transactions |
+| Self-lockout | — | Mandatory small-amount recovery test before real funds |
 
-**Practice:** Dedicated or air-gapped machine when stakes are high, multisig so one exotic factor cannot brick the whole vault, seed offline, path/passphrase in a password manager never stored with the seed.
+**Suggested practice:** dedicated or air-gapped machine when stakes are high; multisig so one exotic factor cannot brick the whole vault; seed offline; path/passphrase in a password manager **never** stored with the seed.
 
 ---
 
-## Safety protocol (Do this every time)
+## Safety protocol
 
 1. Generate offline
 2. Test wallet with seed + saved factor(s)
 3. Send a trivial amount only
 4. Wipe / remove wallet data
-5. Recover using ONLY what you stored (check full length, Unicode can drop in bad copy/paste)
+5. Recover using **only** what you stored (check full **length**; Unicode can drop in bad copy/paste)
 6. Fund more only after recovery works
 
 ---
@@ -131,27 +138,97 @@ High-entropy string for use as an extra factor (e.g. BIP39 passphrase), stored a
 
 | Wallet | Role |
 | :--- | :--- |
-| AirGap Vault | Custom path + passphrase |
-| TokenPocket | Custom path + passphrase |
+| AirGap Vault | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
+| TokenPocket | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
 | BlueWallet | Passphrase only |
 | Electrum | Passphrase only |
 
-Re-check on your device and version. Support can change.
+The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170D4cBd2Ca8b186900EE731d38E84E7e5C8) informed the design goal: entropy noise without an immediate “invalid index” failure on those stacks. **Re-check on your device and version.** Support and parsing can change.
 
 ---
 
 ## Project layout
 
-```text
-main.py
-custompath/
-  __init__.py
-  config.py
-  crypto.py
-  generator.py
-  pools.py
-  sanitizer.py
-  ui.py
-README.md
-LICENSE
+    main.py
+    custompath/
+      __init__.py
+      config.py
+      crypto.py
+      generator.py
+      pools.py
+      sanitizer.py
+      ui.py
+    LICENSE
+    README.md
+
+---
+
+## Requirements
+
+- **Python 3.12+** recommended (3.10+ may work)
+- **Standard library only** for core generation
+- Optional: **Termux** with termux-clipboard-set for clipboard copy
+
+---
+
+## How to run
+
+    git clone https://github.com/YOUR_USERNAME/CustomPathGenerator-Passphrase.git
+    cd CustomPathGenerator-Passphrase
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python3 main.py
+
+Replace YOUR_USERNAME with your GitHub username. A short pause during system-salt PBKDF2 is normal.
+
+---
+
+## What you will be asked
+
+1. Beginner (b) or Advanced (a)
+2. Target length (minimum **2000**)
+3. If Advanced: pure random / personal salt / salt chaining
+4. Optional separate passphrase (y/n)
+5. Generate another? (y/n)
+
+---
+
+## After generation
+
+- Copy the **DERIVATION PATH** (and passphrase if you made one)
+- Store **only finals** in Bitwarden / KeePass / 1Password
+- Label clearly; **never** store with the seed
+- Verify **character length** after saving
+- Test recovery with a trivial amount before real funds
+
+---
+
+## Warnings
+
+1. **Irrecoverable if lost**
+2. **Invisibles can vanish** in bad copy/paste — check length
+3. **Many wallets reject long custom paths** — prefer passphrase unless tested
+4. **Not audited**
+5. **System salt is not shown and changes every run** — back up the printed final string
+6. **Noisy-path equivalence is wallet-specific** — confirmed in author tests on selected apps; never assume universal BIP32 behavior
+
+---
+
+## License
+
+MIT. See the LICENSE file in this repository.
+
+---
+
+## Disclaimer
+
+This software is provided **as-is**, without warranty. Digital asset loss can be permanent. Authors and contributors are not liable for lost funds, wallet incompatibility, or misuse.
+
+**Test recovery with a trivial amount before any real value.**
+
+---
+
+*Protect your sovereignty. Assume breach. Verify recovery.*
+
+
 
