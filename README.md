@@ -1,13 +1,5 @@
 # CustomPathGenerator-Passphrase
 
-
-## 📸 Preview
-
-![Main](assets/screenshots/01-main.png)
-![Output](assets/screenshots/02-output.png)
-![Config](assets/screenshots/03-config.png)
-
-
 **High-entropy custom path & passphrase generator**
 
 > Assume breach. Verify recovery. Never trust a single factor.
