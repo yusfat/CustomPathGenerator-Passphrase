@@ -22,11 +22,17 @@ Seed phrases alone are no longer enough.
 
 **February 2025, Bybit (~$1.5B):** A compromised UI led signers to approve what they *saw*, not what they *signed*. The seed was not the only failure mode.
 
-**2025 Coldcard weak-RNG reports:** Trusted hardware can still produce weak seed material. A well-stored seed is still weak if entropy at generation was weak.
+**February 2025, Bybit, about 1.5 billion dollars:** The signers approved what they saw on screen, not what they actually signed. The UI for the Safe multisig was compromised. The transaction looked like a routine transfer, but the payload was changed to take over the cold wallet contract. One bad approval drained about 400k ETH and stETH variants in minutes. The seed was fine, the devices were fine, but blind signing on a compromised front end bypassed all of it. This is why clear signing and offline verification of what is being signed matters, not just how the seed was made.
+
+This tool is built to show and recommend an integrated approach: multisig co-signers, airgapped cold wallets, and advanced passphrase with high entropy custom derivation paths, as well as intentionally slowing down brute force and making (noise) patterns highly unpredictable.
+
+**2025 Coldcard weak-RNG reports:** Trusted hardware can still create weak seeds. If entropy was weak at generation, safe storage does not help. A firmware bug from 2021 made Coldcard fall back to a weak software RNG giving about 40 bits on Mk2 and Mk3 and about 72 bits on Mk4 and Q instead of using the hardware RNG. That led to three to four attack waves starting July 30 2026 that drained around 1789 BTC or about 114 million dollars from around 8865 addresses. All seeds made without extra entropy on Mk2, Mk3, Mk4, Q and Mk5 were at risk, while seeds made with 50 or more private dice rolls were safe.
+
+This is why offline verifiable entropy like this custom path generator matters. You can prove entropy at generation time and not trust a closed check, even when a seed had been exposed without knowing.
 
 **9-10th Oct, 2026:** Also motivated by the October 9-10th, 2026 $86M Ledger supply-chain incident where reseller-implanted devices exfiltrated recovery phrases, this project/tool provides a fully transparent, offline and verifiable method for private key (custom path / passphrase) generation where nothing ever leaves your device.
 
-**Lesson:** Even when you do many things right, the seed can be exposed, weak or compromised via supply-chain attack. A second, independent, high-entropy factor such as noise obsfucsation like this tool, reduces a single-point failure.
+**Lesson:** Even when you do many things right, the seed can be exposed, weak or compromised via supply-chain attack. A second, independent, high-entropy factor such as noise obfuscation like this tool, reduces a single-point failure.
 
 This tool generates that offline factor: a long, high-entropy string for use as a **BIP39 passphrase** and/or an experimental **custom derivation path**, on top of a standard seed you already protect properly (even though we shall assume it's somehow, unknowingly exposed, to be on a safer side while recognizing the security implications and recoverability factors of using this tool without understanding the risk(s).
 
