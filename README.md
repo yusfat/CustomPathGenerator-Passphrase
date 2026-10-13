@@ -181,6 +181,15 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
     source .venv/bin/activate
     python3 main.py
 
+or
+
+if that doesn't work, this will definitely work:
+
+    git clone https://github.com/YOUR_USERNAME/CustomPathGenerator-Passphrase.git
+    cd CustomPathGenerator
+    python main.py
+
+
 Replace YOUR_USERNAME with your GitHub username. A short pause during system-salt PBKDF2 is normal.
 
 ---
