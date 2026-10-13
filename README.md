@@ -11,7 +11,11 @@
 
 **At least 200 levels deep · Non-standard · Advanced users only**
 
-Repository: **CustomPathGenerator-Passphrase**
+## Preview
+
+![Main](assets/screenshots/01-main.png)
+![Output](assets/screenshots/02-output.png)
+![Config](assets/screenshots/03-config.png)
 
 ---
 
