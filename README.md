@@ -30,7 +30,7 @@ Seed phrases alone are no longer enough.
 
 This tool generates that offline factor: a long, high-entropy string for use as a **BIP39 passphrase** and/or an experimental **custom derivation path**, on top of a standard seed you already protect properly (even though we shall assume it's somehow, unknowingly exposed, to be on a safer side while recognizing the security implications and recoverability factors of using this tool without understanding the risk(s).
 
-This project aims to introduce **entropy noise** in a way that already-tested crypto wallets do not treat as an “invalid index”—notably **TokenPocket** and **AirGap Vault**—so a noisy path string can still resolve for those stacks when their parsers effectively use the numeric index portions.
+This project aims to introduce **entropy noise** in a way that already-tested crypto wallets do not treat as an “invalid index” - notably **TokenPocket** and **AirGap Vault** - so a noisy path string can still resolve for those stacks when their parsers effectively use the numeric index portions.
 
 ### Origin discovery (core of this project)
 
@@ -208,11 +208,11 @@ Replace YOUR_USERNAME with your GitHub username. A short pause during system-sal
 ## Warnings
 
 1. **Irrecoverable if lost**
-2. **Invisibles can vanish** in bad copy/paste — check length
-3. **Many wallets reject long custom paths** — prefer passphrase unless tested
+2. **Invisibles can vanish** in bad copy/paste - check length
+3. **Many wallets reject long custom paths** - prefer passphrase unless tested
 4. **Not audited**
-5. **System salt is not shown and changes every run** — back up the printed final string
-6. **Noisy-path equivalence is wallet-specific** — confirmed in author tests on selected apps; never assume universal BIP32 behavior
+5. **System salt is not shown and changes every run** - back up the printed final string
+6. **Noisy-path equivalence is wallet-specific** - confirmed in author tests on selected apps; never assume universal BIP32 behavior
 
 ---
 
