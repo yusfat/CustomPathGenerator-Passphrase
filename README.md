@@ -37,6 +37,21 @@ Do not assume behavior is portable. Verify it with the exact wallet, version, an
 
 ---
 
+## Security & Non-determinism (important)
+
+Do note that this generator is *intentionally non-deterministic* all through.
+
+Even if you input the identical personal salt (Option 2) or the identical salt-chain layers (Option 3), you will *never* receive the same path twice. This is intentional and is a security feature, not a bug.
+
+### What this means for you
+- You *cannot* recreate a previous path by entering your personal salt again.
+- The *only* method to recover the wallet is to have saved the final output that was printed.
+- A weak personal salt remains safe because it is always combined with a strong, unique system salt plus additional randomness.
+- Even if an attacker obtains only your personal salt, he still cannot reproduce the path.
+- PLEASE do further refer to SECURITY.md file
+
+---
+
 ## Why this exists
 
 Seed phrases alone are no longer enough.
@@ -211,7 +226,7 @@ Please include reproducible tests for code changes and exact wallet/version deta
 ## How to run
 
     git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPath
+    cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
     python3 main.py
@@ -222,7 +237,7 @@ or, if you do not want to use a virtual environment:
     cd CustomPathGenerator-Passphrase
     python3 main.py
 
-You can replace or rename folder 📁 name CustomPath to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
+You can replace or rename folder 📁 name CustomPathGenerator-Passphrase to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
 
 NB: A normal short level standard path (and an app version) would be released soon...
 
