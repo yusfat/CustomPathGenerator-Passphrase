@@ -24,6 +24,7 @@ YUSFAT_NOISE_POOL = (
     + SCRIPT_3
     + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
     + EMOJI_POOL_3
+    + inviSible_70
 )
 
 def flatten_pool(pool):
@@ -58,6 +59,7 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
     flat_script1      = flatten_pool(SCRIPT_1)
     flat_script2      = flatten_pool(SCRIPT_2)
     flat_script3      = flatten_pool(SCRIPT_3)
+    flat_inviS_70     = flatten_pool(inviSible_70) # new
     flat_script4      = flatten_pool(SCRIPT_4) if 'SCRIPT_4' in globals() else []
     flat_emoji3       = flatten_pool(EMOJI_POOL_3)
     flat_yusfat       = flatten_pool(YUSFAT_NOISE_POOL)
@@ -73,14 +75,17 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
             char = pick_from(flat_invisibles, salt_bytes, counter)
         elif r < 22:
             char = pick_from(flat_spaces, salt_bytes, counter)
-        elif r < 38:
+        elif r < 37:
             char = pick_from(flat_emoji + flat_emoji3 + flat_safe, salt_bytes, counter)
-        elif r < 52:
+        elif r < 50:
             char = pick_from(flat_extra, salt_bytes, counter)
-        elif r < 70:
-            char = pick_from(flat_scripts + flat_script1 + flat_script2 + flat_script3 + flat_script4, salt_bytes, counter)
-        elif r < 85:
+        elif r < 62:
+            char = pick_from((flat_scripts + flat_script1 + flat_script2 + flat_script3 + flat_script4), salt_bytes, counter)
+        elif r < 75:
             char = pick_from(flat_non_ascii, salt_bytes, counter)
+        elif r < 87:
+            char = pick_from(flat_inviS_70, salt_bytes, counter)
+        
         else:
             char = pick_from(flat_yusfat, salt_bytes, counter)
 
