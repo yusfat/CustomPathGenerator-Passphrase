@@ -18,6 +18,24 @@
 ![Config](assets/screenshots/03-config.png)
 
 ---
+## Important security distinction
+
+A **derivation path** tells a wallet which child keys to derive from a seed. Standard paths consist of numeric components and wallet-specific conventions.
+
+A **BIP-39 passphrase** is a separate input used with a BIP-39 mnemonic to derive a wallet seed. It is not the same thing as a derivation path. Losing or mistyping a passphrase can make the associated wallet inaccessible.
+
+Some wallet interfaces may accept a path string containing extra characters and ignore or remove those characters when parsing its numeric components. In that case, the noisy string and cleaned numeric path can produce the same wallet.
+
+That equivalence may be useful for **wallet-specific formatting or obfuscation**. However:
+
+- Characters ignored by a wallet do not change the derived keys.
+- Ignored characters do not add cryptographic entropy or strengthen the wallet.
+- Another wallet or software version may reject or interpret the string differently.
+- A noisy path is not a substitute for a strong, securely generated seed or a carefully managed BIP-39 passphrase.
+
+Do not assume behavior is portable. Verify it with the exact wallet, version, and interface you plan to use (these emojis etc. noise were accepted and tested as both derivation paths and also as passphrase on Tokenpocket and AirgapVault.io .
+
+---
 
 ## Why this exists
 
@@ -57,7 +75,7 @@ Both produced the **same** wallet address after that experiment:
 
     0x5673170D4cBd2Ca8b186900EE731d38E84E7e5C8
 
-Tweaking alphabets, characters, and digits around that idea led to this project: **noise for human / storage entropy**, while remaining usable in wallets that already accepted such paths in testing—not a claim that every wallet worldwide behaves the same.
+Tweaking alphabets, characters, and digits around that idea led to this project: **noise for human / storage entropy**, while remaining usable in wallets that already accepted such paths in testing - not a claim that every wallet worldwide behaves the same.
 
 ---
 
@@ -70,6 +88,8 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 | Useful as a BIP39 passphrase (25th word) | Audited financial software |
 | Local Python (no network for core generation) | Protection against phishing or blind signing |
 | Built around tested noisy-path behavior on selected wallets | A guarantee that noise is ignored on all firmware/apps |
+| CAN BE USED EITHER OR BOTH AS CUSTOM PATH OR PASSPHRASE | IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
+
 
 **Recommended use order**
 
@@ -77,6 +97,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 2. Custom path only where the wallet truly accepts it
 3. Separate path + separate passphrase for stronger separation
 4. Same string for both only if you accept less separation
+5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER JUST LIKE THE AUTO DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
 
 **If you lose the factor(s), funds can be gone forever.**
 
