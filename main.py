@@ -48,7 +48,7 @@ def main():
 
         while True:
             try:
-                target_len = int(input("Enter desired path length (minimum 2000): "))
+                target_len = int(input("Enter desired path length (minimum 2000; maximum of 2200, Please due to bitwarden storage): "))
                 if target_len >= 2000:
                     break
                 print("Must be at least 2000 characters.")
