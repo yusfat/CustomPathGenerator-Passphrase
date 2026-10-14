@@ -97,7 +97,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 2. Custom path only where the wallet truly accepts it
 3. Separate path + separate passphrase for stronger separation
 4. Same string for both only if you accept less separation
-5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER JUST LIKE THE AUTO DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
+5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER PASSWORD 🔑 JUST LIKE THE AUTHOR DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
 
 **If you lose the factor(s), funds can be gone forever.**
 
@@ -194,6 +194,11 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
     README.md
 
 ---
+## Contributing
+
+Please include reproducible tests for code changes and exact wallet/version details for compatibility claims. Do not include real recovery phrases, private keys, passphrases, or funded-wallet data in issues or pull requests.
+
+---
 
 ## Requirements
 
@@ -211,16 +216,13 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
     source .venv/bin/activate
     python3 main.py
 
-or
-
-if that doesn't work, this will definitely work:
+or, if you do not want to use a virtual environment:
 
     git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPath
-    python main.py
+    cd CustomPathGenerator-Passphrase
+    python3 main.py
 
-
-You can replace or rename folder 📁 name CustomPath to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker.
+You can replace or rename folder 📁 name CustomPath to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
 
 NB: A normal short level standard path (and an app version) would be released soon...
 
