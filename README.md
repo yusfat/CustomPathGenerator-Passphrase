@@ -103,7 +103,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 | Useful as a BIP39 passphrase (25th word) | Audited financial software |
 | Local Python (no network for core generation) | Protection against phishing or blind signing |
 | Built around tested noisy-path behavior on selected wallets | A guarantee that noise is ignored on all firmware/apps |
-| CAN BE USED EITHER OR BOTH AS CUSTOM PATH OR PASSPHRASE | IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
+| CAN BE USED AS EITHER A CUSTOM PATH OR A PASSPHRASE, OR BOTH (if you must choose one, use it as Passphrase (stronger cryptographic security and protection of your crypto wallet)| IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
 
 
 **Recommended use order**
@@ -112,7 +112,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 2. Custom path only where the wallet truly accepts it
 3. Separate path + separate passphrase for stronger separation
 4. Same string for both only if you accept less separation
-5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER PASSWORD 🔑 JUST LIKE THE AUTHOR DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
+5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER PASSWORD 🔑 , *Facebook Password* etc. JUST LIKE THE AUTHOR DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
 
 **If you lose the factor(s), funds can be gone forever.**
 
