@@ -201,6 +201,8 @@ NON_ASCII_LETTERS = [
     "ա", "բ", "գ", "դ", "ե", "զ", "է", "ը", "թ", "ժ",
 ]
 
+#Please do not delete or remove the empty spaces below 👇, they are not really empty and will add cryptographic entropy and complexity for hackers if you use output of this generator main as PASSPHRASE instead of as CUSTOM DERIVATION PATH 🎊. ======👇 NOT REALLY EMPTY SPACES, DON'T DELETE=====
+
 EMOJI_POOL = ["CD‍
 AB‌ㅤ‌‍‍‍‍⁠‍ㅤ‌‍ㅤ‌⁠ㅤ‌ㅤㅤㅤ‌‍⁠‌⁠⁠‌‌‌
 AB‌ㅤ‌‍‍‍‍⁠‍ㅤ‌‍ㅤ‌⁠ㅤ‌A‌‌‍⁠‍ㅤ⁠ㅤ‍⁠‍‌B‌‌‍⁠‍ㅤ⁠ㅤ‍⁠‍‌C‌‌‍⁠‍ㅤ⁠ㅤ‍⁠‍‌D‌‌‍⁠‍ㅤ⁠ㅤ‍⁠‍‌E
