@@ -103,7 +103,9 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 | Useful as a BIP39 passphrase (25th word) | Audited financial software |
 | Local Python (no network for core generation) | Protection against phishing or blind signing |
 | Built around tested noisy-path behavior on selected wallets | A guarantee that noise is ignored on all firmware/apps |
-| CAN BE USED AS EITHER A CUSTOM PATH OR A PASSPHRASE, OR BOTH (if you must choose one, use it as Passphrase (stronger cryptographic security and protection of your crypto wallet)| IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
+| A TOOL YOU CAN USE AS EITHER A CUSTOM PATH OR A PASSPHRASE, OR BOTH (if you must choose one, use it as Passphrase (stronger cryptographic security and protection of your crypto wallet))| IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
+| A tool that is compatible with safepal wallet (passphrase only but maximum of 128 characters (meaning you must modify the target_length of this generator (config.py file)), TokenPocket and AirgapVault wallet (Best options - both as passphrase and custom derivation path)| IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
+
 
 
 **Recommended use order**
