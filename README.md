@@ -62,7 +62,7 @@ Seed phrases alone are no longer enough.
 
 This tool is built to show and recommend an integrated approach: multisig co-signers, airgapped cold wallets, and advanced passphrase with high entropy custom derivation paths, as well as intentionally slowing down brute force and making (noise) patterns highly unpredictable.
 
-**2025 Coldcard weak-RNG reports:** Trusted hardware can still create weak seeds. If entropy was weak at generation, safe storage does not help. A firmware bug from 2021 made Coldcard fall back to a weak software RNG giving about 40 bits on Mk2 and Mk3 and about 72 bits on Mk4 and Q instead of using the hardware RNG. That led to three to four attack waves starting July 30 2026 that drained around 1789 BTC or about 114 million dollars from around 8865 addresses. All seeds made without extra entropy on Mk2, Mk3, Mk4, Q and Mk5 were at risk, while seeds made with 50 or more private dice rolls were safe.
+**2026 Coldcard weak-RNG reports:** Trusted hardware can still create weak seeds. If entropy was weak at generation, safe storage does not help. A firmware bug from 2021 made Coldcard fall back to a weak software RNG giving about 40 bits on Mk2 and Mk3 and about 72 bits on Mk4 and Q instead of using the hardware RNG. That led to three to four attack waves starting July 30 2026 that drained around 1789 BTC or about 114 million dollars from around 8865 addresses. All seeds made without extra entropy on Mk2, Mk3, Mk4, Q and Mk5 were at risk, while seeds made with 50 or more private dice rolls were safe.
 
 This is why offline verifiable entropy like this custom path generator matters. You can prove entropy at generation time and not trust a closed check, even when a seed had been exposed without knowing.
 
