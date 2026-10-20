@@ -12,7 +12,7 @@ BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
 YUSFAT_ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
 
-YUSFAT_NOISE_POOL = (
+#YUSFAT_NOISE_POOL = (
     YUSFAT_ASCII_NOISE
     + EMOJI_POOL
     + EXTRA_UNIQUE_EMOJIS
