@@ -101,7 +101,7 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
             char = pick_from(FLAT_EMOJI, salt_bytes, counter)
         elif r < 67:
             char = pick_from(FLAT_EXTRA, salt_bytes, counter)
-        elif r < 70:
+        elif r < 84:
             char = pick_from(FLAT_SCRIPTS, salt_bytes, counter)
         else:
             char = pick_from(FLAT_NON_ASCII, salt_bytes, counter)
