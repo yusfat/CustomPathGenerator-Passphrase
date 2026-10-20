@@ -103,7 +103,7 @@ def main():
 
         combined = final_salt + system_salt_hex if final_salt else system_salt_hex
 
-        print("\nGenerating secure derivation path...")
+        print("\nGenerating a secure 🔐 derivation path/passphrase...")
         result = make_path(combined, target_len)
 
         print("\n" + "="*2)
