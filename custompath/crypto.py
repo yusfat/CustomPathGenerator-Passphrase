@@ -13,19 +13,19 @@ SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
 YUSFAT_ASCII_NOISE = string.ascii_letters + string.digits + SAFE_PUNCT
 
 #YUSFAT_NOISE_POOL = (
-    YUSFAT_ASCII_NOISE
-    + EMOJI_POOL
-    + EXTRA_UNIQUE_EMOJIS
-    + SCRIPTS
-    + INVISIBLES
-    + SAFE_EMOJIS
-    + NON_ASCII_LETTERS
-    + SCRIPT_1
-    + SCRIPT_2
-    + SCRIPT_3
-    + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
-    + EMOJI_POOL_3
-)
+#    YUSFAT_ASCII_NOISE
+#    + EMOJI_POOL
+#    + EXTRA_UNIQUE_EMOJIS
+#    + SCRIPTS
+#    + INVISIBLES
+#    + SAFE_EMOJIS
+#    + NON_ASCII_LETTERS
+ #   + SCRIPT_1
+#    + SCRIPT_2
+ #   + SCRIPT_3
+  #  + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
+#    + EMOJI_POOL_3
+#)
 
 def smart_flatten(pool):
     # Keep multi-codepoint emojis together when possible
