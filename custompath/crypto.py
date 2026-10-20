@@ -38,16 +38,16 @@ def smart_flatten(pool):
     return result
 
 # Build the pools only once when the module loads
-FLAT_INVISIBLES = set(smart_flatten(INVISIBLES)))
-FLAT_SPACES     = set(smart_flatten(SPACES)))
-FLAT_EMOJI      = set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)))
-FLAT_EXTRA      = set(smart_flatten(EXTRA_UNIQUE_EMOJIS)))
+FLAT_INVISIBLES = set(smart_flatten(INVISIBLES))
+FLAT_SPACES     = set(smart_flatten(SPACES))
+FLAT_EMOJI      = set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS))
+FLAT_EXTRA      = set(smart_flatten(EXTRA_UNIQUE_EMOJIS))
 FLAT_SCRIPTS    = set(smart_flatten(
     SCRIPTS + SCRIPT_1 + SCRIPT_2 + SCRIPT_3 +
     (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
-)))
-FLAT_NON_ASCII  = set(smart_flatten(NON_ASCII_LETTERS)))
-FLAT_YUSFAT     = set(smart_flatten(YUSFAT_NOISE_POOL)))
+))
+FLAT_NON_ASCII  = set(smart_flatten(NON_ASCII_LETTERS))
+FLAT_YUSFAT     = set(smart_flatten(YUSFAT_NOISE_POOL))
 
 def make_system_salt():
     # Fresh high-entropy salt every run (never shown to the user)
