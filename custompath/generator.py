@@ -21,7 +21,7 @@ def make_path(final_salt: str, target_len: int) -> str:
     counter = 0
 
     for i in range(levels):
-        idx, counter = make_number(salt_bytes, counter)
+        idx = str(secrets.randbelow(MAX_INDEX + 1))
         num = idx
         hardened = (i < 200) or (secrets.randbelow(100) < 75)
 
