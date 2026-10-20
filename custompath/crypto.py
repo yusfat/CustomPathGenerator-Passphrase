@@ -64,27 +64,27 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
 
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
-    
+
     for _ in range(length):
         r = int.from_bytes(hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1], 'big') % 100
         counter += 1
 
         if r < 12:
-            char = pick_from(flat_invisibles, salt_bytes, counter)
+            char = secrets.choice(flat_invisibles)
         elif r < 22:
-            char = pick_from(flat_spaces, salt_bytes, counter)
+            char = secrets.choice(flat_spaces)
+   
         elif r < 38:
-            char = pick_from(flat_emoji + flat_emoji3 + flat_safe, salt_bytes, counter)
+            char = secrets.choice(flat_emoji + flat_emoji3 + flat_safe)
         elif r < 52:
-            char = pick_from(flat_extra, salt_bytes, counter)
+            char = secrets.choice(flat_extra)
         elif r < 70:
-            char = pick_from(flat_scripts + flat_script1 + flat_script2 + flat_script3 + flat_script4, salt_bytes, counter)
+            char = secrets.choice(flat_scripts + flat_script1 + flat_script2 + flat_script3 + flat_script4)
         elif r < 85:
-            char = pick_from(flat_non_ascii, salt_bytes, counter)
+            char = secrets.choice(flat_non_ascii)
         else:
-            char = pick_from(flat_yusfat, salt_bytes, counter)
+            char = secrets.choice(flat_yusfat)
 
         parts.append(char)
-        counter += 1
 
-    return ''.join(parts), counter
+    return ''.join(parts)
