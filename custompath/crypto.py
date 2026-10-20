@@ -93,13 +93,13 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
         ) % 100
         counter += 1
 
-        if r < 12:
+        if r < 17:
             char = pick_from(FLAT_INVISIBLES, salt_bytes, counter)
-        elif r < 22:
+        elif r < 34:
             char = pick_from(FLAT_SPACES, salt_bytes, counter)
-        elif r < 38:
+        elif r < 50:
             char = pick_from(FLAT_EMOJI, salt_bytes, counter)
-        elif r < 52:
+        elif r < 67:
             char = pick_from(FLAT_EXTRA, salt_bytes, counter)
         elif r < 70:
             char = pick_from(FLAT_SCRIPTS, salt_bytes, counter)
