@@ -28,7 +28,7 @@ def make_path(final_salt: str, target_len: int) -> str:
         # Aggressive internal noise (8-15% chance) only on large numbers
         if (100001 <= int(num) <= MAX_INDEX) and (8 <= secrets.randbelow(100) < 15):
             insert_pos = max(1, int(len(num) * 0.7))
-            noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
+            noise_inside = make_noise(min_len=1, max_len=3)
             num = num[:insert_pos] + noise_inside + num[insert_pos:]
 
         noise1 = make_noise(min_len=1, max_len=2)
