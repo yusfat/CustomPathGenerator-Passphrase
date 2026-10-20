@@ -66,8 +66,7 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
     parts = []
 
     for _ in range(length):
-        r = int.from_bytes(hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1], 'big') % 100
-        counter += 1
+        r = secrets.randbelow(100)
 
         if r < 12:
             char = secrets.choice(flat_invisibles)
