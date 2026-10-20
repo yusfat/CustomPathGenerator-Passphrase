@@ -47,7 +47,7 @@ FLAT_SCRIPTS    = set(smart_flatten(
     (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
 ))
 FLAT_NON_ASCII  = set(smart_flatten(NON_ASCII_LETTERS))
-FLAT_YUSFAT     = set(smart_flatten(YUSFAT_NOISE_POOL))
+#FLAT_YUSFAT     = set(smart_flatten(YUSFAT_NOISE_POOL))
 
 def make_system_salt():
     # Fresh high-entropy salt every run (never shown to the user)
@@ -62,7 +62,18 @@ def make_system_salt():
 
 def make_random_salt(min_len=60, max_len=180):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-    return ''.join(secrets.choice(YUSFAT_NOISE_POOL) for _ in range(length))
+    return ''.join(secrets.choice(YUSFAT_ASCII_NOISE
+    + EMOJI_POOL
+    + EXTRA_UNIQUE_EMOJIS
+    + SCRIPTS
+    + INVISIBLES
+    + SAFE_EMOJIS
+    + NON_ASCII_LETTERS
+    + SCRIPT_1
+    + SCRIPT_2
+    + SCRIPT_3
+    + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
+    + EMOJI_POOL_3) for _ in range(length))
 
 def pick_from(seq, salt_bytes, counter):
     if not seq:
@@ -94,8 +105,8 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
             char = pick_from(FLAT_SCRIPTS, salt_bytes, counter)
         elif r < 85:
             char = pick_from(FLAT_NON_ASCII, salt_bytes, counter)
-        else:
-            char = pick_from(FLAT_YUSFAT, salt_bytes, counter)
+        #else:
+        #    char = pick_from(FLAT_YUSFAT, salt_bytes, counter)
 
         parts.append(char)
         counter += 1
