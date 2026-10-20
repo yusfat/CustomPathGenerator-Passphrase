@@ -62,8 +62,7 @@ def make_system_salt():
 
 def make_random_salt(min_len=60, max_len=180):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-    return ''.join(secrets.choice(YUSFAT_ASCII_NOISE
-    + EMOJI_POOL
+    return ''.join(secrets.choice(EMOJI_POOL
     + EXTRA_UNIQUE_EMOJIS
     + SCRIPTS
     + INVISIBLES
