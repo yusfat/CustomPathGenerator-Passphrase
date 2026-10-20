@@ -46,7 +46,7 @@ def pick_from(seq, salt_bytes, counter):
     h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha3_512).digest()
     return seq[int.from_bytes(h[:8], 'big') % len(seq)]
 
-def make_noise(salt_bytes, counter, min_len=1, max_len=4):
+def make_noise(min_len=1, max_len=4):
     # Flatten all pools
     flat_invisibles   = flatten_pool(INVISIBLES)
     flat_spaces       = flatten_pool(SPACES)
