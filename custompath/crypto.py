@@ -69,15 +69,15 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
         r = int.from_bytes(hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1], 'big') % 100
         counter += 1
 
-        if r < 12:
+        if r < 14:
             char = pick_from(flat_invisibles, salt_bytes, counter)
-        elif r < 22:
+        elif r < 28:
             char = pick_from(flat_spaces, salt_bytes, counter)
-        elif r < 38:
+        elif r < 42:
             char = pick_from(flat_emoji + flat_emoji3 + flat_safe, salt_bytes, counter)
-        elif r < 52:
+        elif r < 57:
             char = pick_from(flat_extra, salt_bytes, counter)
-        elif r < 70:
+        elif r < 71:
             char = pick_from(flat_scripts + flat_script1 + flat_script2 + flat_script3 + flat_script4, salt_bytes, counter)
         elif r < 85:
             char = pick_from(flat_non_ascii, salt_bytes, counter)
