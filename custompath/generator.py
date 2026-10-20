@@ -1,4 +1,4 @@
-===== custompath/generator.py =====
+# ===== custompath/generator.py =====
 
 # custompath/generator.py
 
