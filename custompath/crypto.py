@@ -10,7 +10,7 @@ from .pools import *
 
 BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
-YUSFAT_ASCII_NOISE = list(string.ascii_letters + string.digits + SAFE_PUNCT)
+YUSFAT_ASCII_NOISE = set(string.ascii_letters + string.digits + SAFE_PUNCT)
 
 YUSFAT_NOISE_POOL = (
     YUSFAT_ASCII_NOISE
