@@ -31,8 +31,8 @@ def make_path(final_salt: str, target_len: int) -> str:
             noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
             num = num[:insert_pos] + noise_inside + num[insert_pos:]
 
-        noise1, counter = make_noise(salt_bytes, counter, min_len=1, max_len=2)
-        noise2, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
+        noise1, counter = make_noise(min_len=1, max_len=2)
+        noise2, counter = make_noise(min_len=1, max_len=3)
 
         if hardened:
             segment = num + noise1 + "'" + noise2
