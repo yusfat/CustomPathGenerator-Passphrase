@@ -129,5 +129,5 @@ def make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=T
     """Generate a high-entropy password that respects the chosen limits."""
     pool = build_password_pool(allow_emoji, allow_invisible, allow_space, standard_only)
     # always use at least 80% of the allowed maximum for strength
-    min_len = max(16, int(max_len * 0.8))
+    min_len = max(16, int(max_len * 0.95))
     return make_random_salt(min_len=min_len, max_len=max_len, pool=pool)
