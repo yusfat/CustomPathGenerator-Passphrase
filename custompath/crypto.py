@@ -38,16 +38,16 @@ def smart_flatten(pool):
     return result
 
 # Pre-built pools (loaded once)
-FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES)))
-FLAT_SPACES     = tuple(set(smart_flatten(SPACES)))
-FLAT_EMOJI      = tuple(set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)))
-FLAT_EXTRA      = tuple(set(smart_flatten(EXTRA_UNIQUE_EMOJIS)))
-FLAT_SCRIPTS    = tuple(set(smart_flatten(
+FLAT_INVISIBLES = smart_flatten(INVISIBLES)
+FLAT_SPACES     = smart_flatten(SPACES)
+FLAT_EMOJI      = smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)
+FLAT_EXTRA      = smart_flatten(EXTRA_UNIQUE_EMOJIS)
+FLAT_SCRIPTS    = smart_flatten(
     SCRIPTS + SCRIPT_1 + SCRIPT_2 + SCRIPT_3 +
     (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
-)))
-FLAT_NON_ASCII  = tuple(set(smart_flatten(NON_ASCII_LETTERS)))
-FLAT_YUSFAT     = tuple(set(smart_flatten(YUSFAT_NOISE_POOL)))
+)
+FLAT_NON_ASCII  = smart_flatten(NON_ASCII_LETTERS)
+FLAT_YUSFAT     = smart_flatten(YUSFAT_NOISE_POOL)
 FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))          # letters + digits + normal specials only
 
 def make_system_salt():
