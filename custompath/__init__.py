@@ -1,4 +1,4 @@
-===== custompath/__init__.py =====
+#===== custompath/__init__.py =====
 
 # custompath/__init__.py
 
