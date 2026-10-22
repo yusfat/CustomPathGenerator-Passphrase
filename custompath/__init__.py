@@ -1,5 +1,4 @@
 #===== custompath/__init__.py =====
-
 # custompath/__init__.py
 
 from .generator import make_path
