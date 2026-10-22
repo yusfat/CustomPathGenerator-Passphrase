@@ -29,12 +29,10 @@ YUSFAT_NOISE_POOL = (
 )
 
 def smart_flatten(pool):
+    """Turn any mix of strings/lists into a flat list of single characters."""
     result = []
     for item in pool:
-        if isinstance(item, str) and len(item) > 1 and not item.isascii():
-            result.append(item)
-        else:
-            result.extend(list(item))
+        result.extend(list(item))
     return result
 
 # Pre-built pools (loaded once)
