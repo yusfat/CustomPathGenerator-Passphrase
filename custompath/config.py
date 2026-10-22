@@ -1,4 +1,4 @@
-===== custompath/config.py =====
+#===== custompath/config.py =====
 
 # custompath/config.py
 
