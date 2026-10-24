@@ -1,7 +1,4 @@
-#===generator.py===
 #===== custompath/generator.py =====
-
-# custompath/generator.py
 
 import secrets
 import hashlib
