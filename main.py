@@ -1,7 +1,6 @@
 #===== main.py =====
 
 #!/usr/bin/env python3
-# main.py
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise
 from custompath.generator import make_path
