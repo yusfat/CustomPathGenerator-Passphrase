@@ -80,7 +80,7 @@ def load_secret_noise(encrypted_path: str = "secret_noise.age", password: str | 
         return []
 
     try:
-        # Decrypt using the same settings you used to encrypt
+        # Decrypt using the same settings used to encrypt
         result = subprocess.run(
             [
                 "openssl", "enc", "-d",
