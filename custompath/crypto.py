@@ -1,3 +1,4 @@
+# ===crypto.py===
 #===== custompath/crypto.py =====
 
 # custompath/crypto.py
@@ -6,6 +7,9 @@ import secrets
 import hashlib
 import hmac
 import string
+import getpass
+import subprocess
+from pathlib import Path
 from .pools import *
 
 BANNED = {'/', '\\', '"', "'"}
@@ -48,6 +52,51 @@ FLAT_NON_ASCII  = tuple(set(smart_flatten(NON_ASCII_LETTERS)))
 FLAT_YUSFAT     = tuple(set(smart_flatten(YUSFAT_NOISE_POOL)))
 FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))          # letters + digits + normal specials only
 
+# ---- Optional secret noise pool (password-protected, additive) ----
+SECRET_NOISE_POOL = []
+FLAT_SECRET = tuple()
+
+def load_secret_noise(encrypted_path: str = "secret_noise.age", password: str | None = None) -> list:
+    """
+    Decrypt and load an extra noise pool from an age-encrypted file.
+    Returns the list of characters on success, empty list on any failure.
+    Existing behaviour is completely preserved when this returns empty.
+    """
+    global SECRET_NOISE_POOL, FLAT_SECRET
+    SECRET_NOISE_POOL = []
+    FLAT_SECRET = tuple()
+
+    path = Path(encrypted_path)
+    if not path.is_file():
+        return []
+
+    if password is None:
+        try:
+            password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
+        except Exception:
+            return []
+
+    if not password:
+        return []
+
+    try:
+        result = subprocess.run(
+            ["age", "-d", "-o", "-", str(path)],
+            input=password.encode(),
+            capture_output=True,
+            check=True,
+            timeout=30,
+        )
+        content = result.stdout.decode("utf-8", errors="ignore")
+        chars = list(content)
+        SECRET_NOISE_POOL = list(dict.fromkeys(chars))  # deduplicate, preserve order
+        FLAT_SECRET = tuple(SECRET_NOISE_POOL)
+        return SECRET_NOISE_POOL
+    except Exception:
+        SECRET_NOISE_POOL = []
+        FLAT_SECRET = tuple()
+        return []
+
 def make_system_salt():
     salt = secrets.token_bytes(64)
     stretched = hashlib.pbkdf2_hmac(
@@ -89,10 +138,12 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4):
             char = pick_from(FLAT_EMOJI, salt_bytes, counter)
         elif r < 52:
             char = pick_from(FLAT_EXTRA, salt_bytes, counter)
-        elif r < 70:
+        elif r < 68:
             char = pick_from(FLAT_SCRIPTS, salt_bytes, counter)
-        elif r < 85:
+        elif r < 80:
             char = pick_from(FLAT_NON_ASCII, salt_bytes, counter)
+        elif r < 95 and FLAT_SECRET:          # MORE FREQUENT use of secret pool (~15% slice)
+            char = pick_from(FLAT_SECRET, salt_bytes, counter)
         else:
             char = pick_from(FLAT_YUSFAT, salt_bytes, counter)
         parts.append(char)
@@ -114,6 +165,9 @@ def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True
             pool.extend(FLAT_INVISIBLES)
         if allow_space:
             pool.extend(FLAT_SPACES)
+        # ---- additive: include secret pool when available and full noise is allowed ----
+        if FLAT_SECRET and allow_emoji and allow_invisible:
+            pool.extend(FLAT_SECRET)
     # remove duplicates while keeping order
     seen = set()
     clean = []
