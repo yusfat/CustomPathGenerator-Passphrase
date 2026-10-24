@@ -1,4 +1,3 @@
-# ===crypto.py===
 #===== custompath/crypto.py =====
 
 # custompath/crypto.py
@@ -58,7 +57,8 @@ FLAT_SECRET = tuple()
 
 def load_secret_noise(encrypted_path: str = "secret_noise.age", password: str | None = None) -> list:
     """
-    Decrypt and load an extra noise pool from an age-encrypted file.
+    Decrypt and load an extra noise pool from an openssl-encrypted file
+    (aes-256-cbc + pbkdf2).
     Returns the list of characters on success, empty list on any failure.
     Existing behaviour is completely preserved when this returns empty.
     """
@@ -80,9 +80,16 @@ def load_secret_noise(encrypted_path: str = "secret_noise.age", password: str | 
         return []
 
     try:
+        # Decrypt using the same settings you used to encrypt
         result = subprocess.run(
-            ["age", "-d", "-o", "-", str(path)],
-            input=password.encode(),
+            [
+                "openssl", "enc", "-d",
+                "-aes-256-cbc",
+                "-pbkdf2",
+                "-in", str(path),
+                "-pass", "stdin"
+            ],
+            input=(password + "\n").encode(),
             capture_output=True,
             check=True,
             timeout=30,
