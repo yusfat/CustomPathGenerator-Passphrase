@@ -1,9 +1,10 @@
+===main.py===
 #===== main.py =====
 
 #!/usr/bin/env python3
 # main.py
 
-from custompath.crypto import make_system_salt, make_random_salt, make_password
+from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise
 from custompath.generator import make_path
 import hashlib
 import sys
@@ -170,6 +171,14 @@ def generate_password():
 
 def main():
     print_header()
+
+    # ---- Optional password-protected extra noise pool (additive) ----
+    encrypted_noise = input("Path to encrypted secret noise file (Enter to skip / default secret_noise.age): ").strip() or "secret_noise.age"
+    loaded = load_secret_noise(encrypted_noise)
+    if loaded:
+        print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")
+    else:
+        print("ℹ️  No secret noise pool loaded (file missing, wrong password, or skipped). Using original pools only.")
 
     while True:
         print("What do you want to generate?")
