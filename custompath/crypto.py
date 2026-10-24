@@ -1,7 +1,5 @@
 #===== custompath/crypto.py =====
 
-# custompath/crypto.py
-
 import secrets
 import hashlib
 import hmac
