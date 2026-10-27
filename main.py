@@ -93,14 +93,14 @@ def generate_path():
 
     combined = final_salt + system_salt_hex if final_salt else system_salt_hex
     print("\nGenerating path...")
-    result = make_path(combined, target_len)
-
+    result, levels = make_path(combined, target_len)
     print("\n" + "=" * 70)
     print("DERIVATION PATH")
     print("=" * 70)
     print(result)
     print("=" * 70)
     print(f"Length: {len(result)} characters")
+    print(f"Levels: {levels} (excluding the final /0/0)")
 
     if copy_to_clipboard(result):
         print("Path copied to clipboard.")
