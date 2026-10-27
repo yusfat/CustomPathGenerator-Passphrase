@@ -52,4 +52,4 @@ def make_path(final_salt, target_len):
         if not path.endswith("/0"):
             path = path.rstrip("/") + "/0/0"
 
-    return path
+    return path, levels
