@@ -217,7 +217,9 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
 Please include reproducible tests for code changes and exact wallet/version details for compatibility claims. Do not include real recovery phrases, private keys, passphrases, or funded-wallet data in issues or pull requests.
 
 NB: IF YOU FIND THIS TOOL REALLY HELPFUL, YOU MAY TIP THE AUTHOR...
-BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
+BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre :
+
+        377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
 
 ---
 
