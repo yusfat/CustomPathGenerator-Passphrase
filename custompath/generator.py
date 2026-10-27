@@ -41,9 +41,9 @@ def make_path(final_salt, target_len):
                     hardened = secrets.randbelow(2) == 0
 
         if (100001 <= int(num) <= MAX_INDEX) and (8 <= secrets.randbelow(100) < 15):
-            insert_pos = max(1, int(len(num) * 0.7))
+            noise_spot = max(1, int(len(num) * 0.7))
             noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
-            num = num[:insert_pos] + noise_inside + num[insert_pos:]
+            num = num[:noise_spot] + noise_inside + num[noise_spot:]
 
         noise1, counter = make_noise(salt_bytes, counter, min_len=1, max_len=2)
         noise2, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
