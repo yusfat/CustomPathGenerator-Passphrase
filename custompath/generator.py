@@ -34,7 +34,9 @@ def make_path(final_salt, target_len):
         noise1, counter = make_noise(salt_bytes, counter, min_len=1, max_len=2)
         noise2, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
 
-        if hardened:
+        if hardened: #crypto wallet import risk management proactive measure(s)
+            pure = ''.join(c for c in (num + noise1) if c.isdigit()) or '0'
+            if len(pure) > 10 or int(pure) > MAX_INDEX: num, noise1 = pure[:10] if int(pure[:10] or 0) <= MAX_INDEX else pure[:9], ''
             segment = num + noise1 + "'" + noise2
         else:
             segment = num + noise1
