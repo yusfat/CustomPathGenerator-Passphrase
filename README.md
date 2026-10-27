@@ -189,8 +189,10 @@ High-entropy string for use as an extra factor (e.g. BIP39 passphrase), stored a
 | :--- | :--- |
 | AirGap Vault | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
 | TokenPocket | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
-| BlueWallet | Passphrase only |
-| Electrum | Passphrase only |
+| BlueWallet * | Passphrase only |
+| Electrum * | Passphrase only |
+
+* Another name for Passphrase in most/other wallets is Advanced Mode
 
 The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170D4cBd2Ca8b186900EE731d38E84E7e5C8) informed the design goal: entropy noise without an immediate “invalid index” failure on those stacks. **Re-check on your device and version.** Support and parsing can change.
 
@@ -205,15 +207,17 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
       crypto.py
       generator.py
       pools.py
-      sanitizer.py
-      ui.py
-    LICENSE
     README.md
-
+    LICENSE
+    SECURITY.md
+    
 ---
 ## Contributing
 
 Please include reproducible tests for code changes and exact wallet/version details for compatibility claims. Do not include real recovery phrases, private keys, passphrases, or funded-wallet data in issues or pull requests.
+
+NB: IF YOU FIND THIS TOOL REALLY HELPFUL, YOU MAY TIP THE AUTHOR...
+BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
 
 ---
 
@@ -231,7 +235,7 @@ Please include reproducible tests for code changes and exact wallet/version deta
     cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
-    python3 main.py
+    python3 main.py               # python main.py also works, always 
 
 or, if you do not want to use a virtual environment:
 
