@@ -8,16 +8,23 @@ from .crypto import make_noise
 
 def make_number(salt_bytes, counter):
     h = hmac.new(salt_bytes, f"i{counter}".encode(), hashlib.sha3_512).digest()
-    digits = (int.from_bytes(h[:1], 'big') % 10) + 1
+
+    # 95 % single-digit, 5 % multi-digit (2–10)
+    if secrets.randbelow(100) < 95:
+        digits = 1
+    else:
+        digits = (int.from_bytes(h[:1], 'big') % 9) + 2   # 2…10
+
     if digits == 1:
         return str(int.from_bytes(h[1:2], 'big') % 10), counter + 1
+
     max_val = min(10 ** digits - 1, MAX_INDEX)
     val = int.from_bytes(h[1:9], 'big') % (max_val + 1)
     return str(val), counter + 1
 
 def make_path(final_salt, target_len):
     salt_bytes = hashlib.sha3_512(final_salt.encode('utf-8')).digest()
-    levels = secrets.randbelow(80) + 220
+    levels = secrets.randbelow(105) + 405
     parts = ['m']
     counter = 0
 
