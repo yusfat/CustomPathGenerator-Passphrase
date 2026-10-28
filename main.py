@@ -119,8 +119,8 @@ def generate_password():
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1":        # SafePal (75 is safe)
-        value = 1200  # < this is absolute max
+    if choice == "1": # SafePal (75 safe;1150 safe for Token pocket/airgapv)
+        value = 1150  # < this is absolute max
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
@@ -131,7 +131,7 @@ def generate_password():
                 continue
             max_len = int(raw)
             if not 75 <= max_len <= value:
-                print(f"Invalid! Must be between 75 and {value}. You entered {max_len}.")
+                print(f"Invalid! Must be between 75 and {value}. You entered {max_len}. '75 safe for SAFEPAL;1150 safe for TOKENPOCKET/AIRGAPV'.")
                 continue
             break
 
