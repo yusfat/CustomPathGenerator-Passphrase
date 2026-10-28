@@ -120,7 +120,7 @@ def generate_password():
     choice = input("Choice (1-5): ").strip()
 
     if choice == "1":        # SafePal (75 is safe)
-        value = 1300  # < this is absolute max
+        value = 1150  # < this is absolute max
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
