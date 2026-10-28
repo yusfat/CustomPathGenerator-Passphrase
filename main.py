@@ -120,29 +120,20 @@ def generate_password():
     choice = input("Choice (1-5): ").strip()
 
     if choice == "1":        # SafePal (75 is safe)
-        value = 1000
+        value = 2000
         try:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
                 max_len = 75
             else:
-                if len(raw) > 5 or not raw.isdigit():  # digits only, max 4 chars
+                if len(raw) > 5 or not raw.isdigit():  #digits only, max 4 chars
                     raise ValueError
                 max_len = int(raw)
-                max_len = max(75, min(max_len, value))  # enforces 75 <= max_len <= 1000
+                # enforces 75 <= max_len <= 2000
+                if not 75 <= max_len <= value: raise ValueError  
         except ValueError:
             max_len = 75
         print("\nSafePal options:")
-
-   # if choice == "1":         # SafePal (75 is safe)
-        # max_len <= 75  # 70 is safe 75 <= max_len <= value for TP/AirgapVault
-       # if choice == "1":         # SafePal (75 is safe)
-       # value = 1000
-      #  max_len = 75  # 70 is safe, 75 safe for TP/AirgapVault
-     #   max_len = max(75, min(max_len, value))
-      # print("\nSafePal options:")
-
-       # print("\nSafePal options:")
 
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
