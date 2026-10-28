@@ -120,7 +120,7 @@ def generate_password():
     choice = input("Choice (1-5): ").strip()
 
     if choice == "1":          # SafePal
-        max_len = 85
+        max_len = 80
         print("\nSafePal options:")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
