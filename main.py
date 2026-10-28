@@ -159,7 +159,9 @@ def generate_password():
     print("GENERATED PASSWORD / PASSPHRASE")
     print("=" * 70)
     print(result)
-    print("=" * 70)
+
+    print(".")
+
     print(f"Length: {len(result)} characters")
 
     if copy_to_clipboard(result):
