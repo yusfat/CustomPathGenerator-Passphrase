@@ -120,19 +120,21 @@ def generate_password():
     choice = input("Choice (1-5): ").strip()
 
     if choice == "1":        # SafePal (75 is safe)
-        value = 2000
-        try:
+        value = 2000  # < this is absolute max
+        while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
                 max_len = 75
-            else:
-                if len(raw) > 5 or not raw.isdigit():  #digits only, max 4 chars
-                    raise ValueError
-                max_len = int(raw)
-                # enforces 75 <= max_len <= 2000
-                if not 75 <= max_len <= value: raise ValueError  
-        except ValueError:
-            max_len = 75
+                break
+            if not raw.isdigit():
+                print(f"Invalid! Must be a number between 75 and {value}.")
+                continue
+            max_len = int(raw)
+            if not 75 <= max_len <= value:
+                print(f"Invalid! Must be between 75 and {value}. You entered {max_len}.")
+                continue
+            break
+
         print("\nSafePal options:")
 
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
