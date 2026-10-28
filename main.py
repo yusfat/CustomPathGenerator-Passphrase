@@ -114,20 +114,36 @@ def generate_password():
     print("\nSelect service / limit:")
     print("1. SafePal          (max 128 chars, full noise allowed where some emojis count as 3 charactes and more etc. so maximum enforced length must be lesser than 128)")
     print("2. Gmail            (max 100 chars, letters/digits/standard specials only)")
-    print("3. Coursera         (max 71 chars)")
+    print("3. Coursera          (max 71 chars)")
     print("4. GitHub / General (emojis & noise ok, longer)")
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1":         # SafePal (75 is safe)
-        #75 <= max_len <= value  # 70 is safe 75 <= max_len <= value for TP/AirgapVault
-       # if choice == "1":         # SafePal (75 is safe)
+    if choice == "1":        # SafePal (75 is safe)
         value = 1000
-        max_len = 75  # 70 is safe, 75 safe for TP/AirgapVault
-        max_len = max(75, min(max_len, value))
+        try:
+            raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
+            if raw == "":
+                max_len = 75
+            else:
+                if len(raw) > 5 or not raw.isdigit():  # digits only, max 4 chars
+                    raise ValueError
+                max_len = int(raw)
+                max_len = max(75, min(max_len, value))  # enforces 75 <= max_len <= 1000
+        except ValueError:
+            max_len = 75
+        print("\nSafePal options:")
+
+   # if choice == "1":         # SafePal (75 is safe)
+        # max_len <= 75  # 70 is safe 75 <= max_len <= value for TP/AirgapVault
+       # if choice == "1":         # SafePal (75 is safe)
+       # value = 1000
+      #  max_len = 75  # 70 is safe, 75 safe for TP/AirgapVault
+     #   max_len = max(75, min(max_len, value))
       # print("\nSafePal options:")
 
-        print("\nSafePal options:")
+       # print("\nSafePal options:")
+
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
     elif choice == "2":        # Gmail
