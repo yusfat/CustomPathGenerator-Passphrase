@@ -121,7 +121,7 @@ def generate_password():
 
     if choice == "1":         # SafePal (75 is safe)
         #75 <= max_len <= value  # 70 is safe 75 <= max_len <= value for TP/AirgapVault
-        if choice == "1":         # SafePal (75 is safe)
+       # if choice == "1":         # SafePal (75 is safe)
         value = 1000
         max_len = 75  # 70 is safe, 75 safe for TP/AirgapVault
         max_len = max(75, min(max_len, value))
