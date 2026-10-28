@@ -119,8 +119,8 @@ def generate_password():
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1":          # SafePal
-        max_len = 75            # 70 is safe
+    if choice == "1":         # SafePal (75 is safe)
+        75 <= max_len <= value  # 70 is safe 75 <= max_len <= value for TP/AirgapVault
         print("\nSafePal options:")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
