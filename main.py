@@ -98,7 +98,7 @@ def generate_path():
     print("DERIVATION PATH")
     print("=" * 70)
     print(result)
-    print("=" * 70)
+    print(".")
     print(f"Length: {len(result)} characters")
     print(f"Levels: {levels} (excluding the final /0/0)")
 
