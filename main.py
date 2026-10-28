@@ -119,8 +119,8 @@ def generate_password():
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1": # SafePal (75 safe;1150 safe for Token pocket/airgapv)
-        value = 1140  # < this is absolute max
+    if choice == "1": # SafePal (75 safe;1130 safe for Token pocket/airgapv)
+        value = 1130  # < this is absolute max
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
