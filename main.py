@@ -112,7 +112,7 @@ def generate_path():
 
 def generate_password():
     print("\nSelect service / limit:")
-    print("1. SafePal          (max 128 chars, full noise allowed)")
+    print("1. SafePal          (max 128 chars, full noise allowed where some emojis count as 3 charactes and more etc. so maximum enforced length must be lesser than 128)")
     print("2. Gmail            (max 100 chars, letters/digits/standard specials only)")
     print("3. Coursera         (max 71 chars)")
     print("4. GitHub / General (emojis & noise ok, longer)")
@@ -120,7 +120,7 @@ def generate_password():
     choice = input("Choice (1-5): ").strip()
 
     if choice == "1":          # SafePal
-        max_len = 90
+        max_len = 85
         print("\nSafePal options:")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
