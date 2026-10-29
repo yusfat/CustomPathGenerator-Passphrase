@@ -1,2 +1,9 @@
 __pycache__/
 *.pyc
+*.age
+*.enc
+*.txt.age
+secret_noise.txt
+new_noise.txt
+*_noise.txt
+*.txt
