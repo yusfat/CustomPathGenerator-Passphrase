@@ -250,7 +250,10 @@ or
 For STABLE SECURE VERSION:
 
 git clone --branch v1.1-secure https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-
+cd CustomPathGenerator-Passphrase
+python3 -m venv .venv
+source .venv/bin/activate
+python3 main.py
 
 You can replace or rename folder 📁 name CustomPathGenerator-Passphrase to any name of your choice. A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
 
