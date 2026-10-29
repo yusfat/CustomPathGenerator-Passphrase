@@ -25,6 +25,8 @@ YUSFAT_NOISE_POOL = (
     + SCRIPT_1
     + SCRIPT_2
     + SCRIPT_3
+    + SPACES
+    + inviSible_70
     + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
     + EMOJI_POOL_3
 )
@@ -37,7 +39,7 @@ def smart_flatten(pool):
     return result
 
 # Pre-built pools (loaded once) #cleaner, more secure / zero bias
-FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES)))
+FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES + inviSible_70)))
 FLAT_SPACES     = tuple(set(smart_flatten(SPACES)))
 FLAT_EMOJI      = tuple(set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)))
 FLAT_EXTRA      = tuple(set(smart_flatten(EXTRA_UNIQUE_EMOJIS)))
@@ -62,12 +64,12 @@ def _n() -> str:
     return raw.decode() + h + ".enc"
 
 def _v(password: str, salt: bytes) -> bytes:
-    # info string still mildly obfuscated
+    
     info = _t(bytes([25,47,41,46,53,55,10,59,46,50,20,53,51,41,63,18,23,27,25,44,107]))
     return hashlib.pbkdf2_hmac(
         "sha3_512",
         password.encode("utf-8"),
-        salt + info,          # random salt + fixed info
+        salt + info,          
         200000,
         dklen=64
     )
