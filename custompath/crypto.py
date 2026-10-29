@@ -61,9 +61,16 @@ def _n() -> str:
     h = hashlib.sha3_256(raw).hexdigest()[:4]
     return raw.decode() + h + ".enc"
 
-def _v(p: str) -> bytes:
+def _v(password: str, salt: bytes) -> bytes:
+    # info string still mildly obfuscated
     info = _t(bytes([25,47,41,46,53,55,10,59,46,50,20,53,51,41,63,18,23,27,25,44,107]))
-    return hashlib.pbkdf2_hmac("sha3_512", p.encode(), info, 200000, dklen=64)
+    return hashlib.pbkdf2_hmac(
+        "sha3_512",
+        password.encode("utf-8"),
+        salt + info,          # random salt + fixed info
+        200000,
+        dklen=64
+    )
 
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     global SECRET_NOISE_POOL, FLAT_SECRET
@@ -73,34 +80,49 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     expected = _n()
     path = Path(encrypted_path or expected)
 
-    if path.name != expected:
-        return []
-
     if not path.is_file():
         return []
 
+    # ---------- old style (any name that is not the special one) ----------
+    if path.name != expected:
+        # original behaviour – no HMAC required
+        if password is None:
+            try:
+                password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
+            except Exception:
+                return []
+        if not password:
+            return []
+        try:
+            result = subprocess.run(
+                ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
+                 "-in", str(path), "-pass", "stdin"],
+                input=(password + "\n").encode(),
+                capture_output=True, check=True, timeout=30,
+            )
+            content = result.stdout.decode("utf-8", errors="ignore")
+            chars = list(content)
+            SECRET_NOISE_POOL = list(dict.fromkeys(chars))
+            FLAT_SECRET = tuple(SECRET_NOISE_POOL)
+            return SECRET_NOISE_POOL
+        except Exception:
+            return []
+
+    # ---------- new style (exact expected name + HMAC with per-file salt) ----------
     if password is None:
         try:
             password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
         except Exception:
             return []
-
     if not password:
         return []
 
     try:
         result = subprocess.run(
-            [
-                "openssl", "enc", "-d",
-                "-aes-256-cbc",
-                "-pbkdf2",
-                "-in", str(path),
-                "-pass", "stdin"
-            ],
+            ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
+             "-in", str(path), "-pass", "stdin"],
             input=(password + "\n").encode(),
-            capture_output=True,
-            check=True,
-            timeout=30,
+            capture_output=True, check=True, timeout=30,
         )
         content = result.stdout.decode("utf-8", errors="ignore")
 
@@ -108,8 +130,14 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
         if not hmac_path.is_file():
             return []
 
-        expected_mac = hmac_path.read_bytes().strip()
-        key = _v(password)
+        data = hmac_path.read_bytes()
+        if len(data) < 16 + 32:          # salt + at least some MAC
+            return []
+
+        salt = data[:16]
+        expected_mac = data[16:]
+
+        key = _v(password, salt)
         actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
 
         if not hmac.compare_digest(actual_mac, expected_mac):
