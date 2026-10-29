@@ -70,7 +70,7 @@ def _v(password: str, salt: bytes) -> bytes:
         "sha3_512",
         password.encode("utf-8"),
         salt + info,          
-        200000,
+        2000000,
         dklen=64
     )
 
