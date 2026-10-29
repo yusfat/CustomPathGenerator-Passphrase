@@ -1,19 +1,47 @@
-#===== main.py =====
-
 #!/usr/bin/env python3
+# main.py
 
-from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise
+from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
+from custompath.security import (
+    is_debugger_present,
+    is_terminal_recorder_present,
+    clear_clipboard_after,
+    secure_cleanup
+)
 import hashlib
 import sys
+import os
+import shutil
+import subprocess
 
 def copy_to_clipboard(text):
-    import subprocess
-    for cmd in (["termux-clipboard-set"],
-                ["xclip", "-selection", "clipboard"],
-                ["pbcopy"]):
+    cmds = []
+
+    termux_bin = "/data/data/com.termux/files/usr/bin/termux-clipboard-set"
+    if os.path.exists(termux_bin):
+        cmds.append([termux_bin])
+
+    if shutil.which("xclip"):
+        cmds.append(["xclip", "-selection", "clipboard"])
+    if shutil.which("xsel"):
+        cmds.append(["xsel", "--clipboard", "--input"])
+
+    if shutil.which("pbcopy"):
+        cmds.append(["pbcopy"])
+
+    if os.name == "nt":
+        cmds.append(["cmd", "/c", "clip"])
+
+    for cmd in cmds:
         try:
-            subprocess.run(cmd, input=text.encode("utf-8"), check=True, capture_output=True)
+            subprocess.run(
+                cmd,
+                input=text.encode("utf-8"),
+                check=True,
+                capture_output=True,
+                timeout=3
+            )
             return True
         except Exception:
             continue
@@ -47,10 +75,10 @@ def get_advanced_salt():
     choice = input("Choice (1/2/3): ").strip()
 
     if choice == "3":
-        print("\nSalt chaining (5-7 layers recommended)")
+        print("\nSalt chaining (3-5 layers recommended)")
         final_salt = ""
         layers = 0
-        while layers < 7:
+        while layers < 5:
             print(f"\nLayer {layers + 1}")
             gen = input("Generate random salt for this layer? (y/n): ").strip().lower()
             if gen == "y":
@@ -80,7 +108,20 @@ def get_advanced_salt():
 
     return ""
 
+def security_gate():
+    if is_debugger_present():
+        print("Debugger detected. Refusing to generate secrets.")
+        return False
+    if is_terminal_recorder_present():
+        print("Terminal recorder or screen-capture tool detected.")
+        print("Refusing to generate secrets for safety.")
+        return False
+    return True
+
 def generate_path():
+    if not security_gate():
+        return
+
     mode = input("Beginner or Advanced? (b/a): ").strip().lower()
     target_len = get_target_length()
     _, system_salt_hex = make_system_salt()
@@ -94,23 +135,29 @@ def generate_path():
     combined = final_salt + system_salt_hex if final_salt else system_salt_hex
     print("\nGenerating path...")
     result, levels = make_path(combined, target_len)
+
     print("\n" + "=" * 70)
     print("DERIVATION PATH")
     print("=" * 70)
     print(result)
-
     print(".")
     print(".")
-
     print(f"Length: {len(result)} characters")
     print(f"Levels: {levels} (excluding the final /0/0)")
 
     if copy_to_clipboard(result):
         print("Path copied to clipboard.")
+        print("Clipboard will be cleared automatically in 90 seconds.")
+        clear_clipboard_after(90)
     else:
         print("Could not copy automatically – please copy it yourself.")
 
+    secure_cleanup(result)
+
 def generate_password():
+    if not security_gate():
+        return
+
     print("\nSelect service / limit:")
     print("1. SafePal          (max 128 chars, full noise allowed where some emojis count as 3 charactes and more etc. so maximum enforced length must be lesser than 128)")
     print("2. Gmail            (max 100 chars, letters/digits/standard specials only)")
@@ -119,8 +166,8 @@ def generate_password():
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1": # SafePal (75 safe;1110 safe for Token pocket/airgapv)
-        value = 1110  # < this is absolute max
+    if choice == "1":  # SafePal (75 safe;1110 safe for Token pocket/airgapv)
+        value = 1110
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
@@ -136,15 +183,16 @@ def generate_password():
             break
 
         print("\nSafePal options:")
-
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
-    elif choice == "2":        # Gmail
+
+    elif choice == "2":
         max_len = 100
         print("\nGmail rules: no emoji, no invisible characters.")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=False, allow_invisible=False, allow_space=allow_space, standard_only=True)
-    elif choice == "3":        # Coursera
+
+    elif choice == "3":
         max_len = 71
         print("\nCoursera options:")
         use_full = input("Use full noise (emoji + invisible)? (y/n): ").strip().lower() == "y"
@@ -154,12 +202,14 @@ def generate_password():
         else:
             allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
             result = make_password(max_len, allow_emoji=False, allow_invisible=False, allow_space=allow_space, standard_only=True)
-    elif choice == "4":        # GitHub / general
+
+    elif choice == "4":
         max_len = 200
         print("\nGitHub / general (full noise allowed)")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
-    else:                      # Custom
+
+    else:
         while True:
             try:
                 max_len = int(input("Maximum length: ").strip())
@@ -177,21 +227,26 @@ def generate_password():
     print("GENERATED PASSWORD / PASSPHRASE")
     print("=" * 70)
     print(result)
-
     print(".")
-
     print(f"Length: {len(result)} characters")
 
     if copy_to_clipboard(result):
         print("Copied to clipboard.")
+        print("Clipboard will be cleared automatically in 90 seconds.")
+        clear_clipboard_after(90)
     else:
         print("Could not copy automatically – please copy it yourself.")
+
+    secure_cleanup(result)
 
 def main():
     print_header()
 
-    # ---- Optional password-protected extra noise pool (additive) ----
-    encrypted_noise = input("Path to encrypted secret noise file (Enter to skip / default secret_noise.age): ").strip() or "secret_noise.age"
+    default_name = _n()
+    encrypted_noise = input(
+        "Path to encrypted secret noise file (or press Enter to skip): "
+    ).strip() or default_name
+
     loaded = load_secret_noise(encrypted_noise)
     if loaded:
         print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")

@@ -25,6 +25,8 @@ YUSFAT_NOISE_POOL = (
     + SCRIPT_1
     + SCRIPT_2
     + SCRIPT_3
+    + SPACES
+    + inviSible_70
     + (SCRIPT_4 if 'SCRIPT_4' in globals() else [])
     + EMOJI_POOL_3
 )
@@ -37,7 +39,7 @@ def smart_flatten(pool):
     return result
 
 # Pre-built pools (loaded once) #cleaner, more secure / zero bias
-FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES)))
+FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES + inviSible_70)))
 FLAT_SPACES     = tuple(set(smart_flatten(SPACES)))
 FLAT_EMOJI      = tuple(set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)))
 FLAT_EXTRA      = tuple(set(smart_flatten(EXTRA_UNIQUE_EMOJIS)))
@@ -53,50 +55,101 @@ FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))          # letters + digits + n
 SECRET_NOISE_POOL = []
 FLAT_SECRET = tuple()
 
-def load_secret_noise(encrypted_path: str = "secret_noise.age", password: str | None = None) -> list:
-    """
-    Decrypt and load an extra noise pool from an openssl-encrypted file
-    (aes-256-cbc + pbkdf2).
-    Returns the list of characters on success, empty list on any failure.
-    Existing behaviour is completely preserved when this returns empty.
-    """
+def _t(s: bytes, k: int = 0x5A) -> bytes:
+    return bytes(c ^ k for c in s)
+
+def _n() -> str:
+    raw = _t(bytes([41,63,57,40,63,46,5,52,53,51,41,63,5,109,60,105,59,99,57]))
+    h = hashlib.sha3_256(raw).hexdigest()[:4]
+    return raw.decode() + h + ".enc"
+
+def _v(password: str, salt: bytes) -> bytes:
+    
+    info = _t(bytes([25,47,41,46,53,55,10,59,46,50,20,53,51,41,63,18,23,27,25,44,107]))
+    return hashlib.pbkdf2_hmac(
+        "sha3_512",
+        password.encode("utf-8"),
+        salt + info,          
+        2000000,
+        dklen=64
+    )
+
+def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
     FLAT_SECRET = tuple()
 
-    path = Path(encrypted_path)
+    expected = _n()
+    path = Path(encrypted_path or expected)
+
     if not path.is_file():
         return []
 
+    # ---------- old style (any name that is not the special one) ----------
+    if path.name != expected:
+        # original behaviour – no HMAC required
+        if password is None:
+            try:
+                password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
+            except Exception:
+                return []
+        if not password:
+            return []
+        try:
+            result = subprocess.run(
+                ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
+                 "-in", str(path), "-pass", "stdin"],
+                input=(password + "\n").encode(),
+                capture_output=True, check=True, timeout=30,
+            )
+            content = result.stdout.decode("utf-8", errors="ignore")
+            chars = list(content)
+            SECRET_NOISE_POOL = list(dict.fromkeys(chars))
+            FLAT_SECRET = tuple(SECRET_NOISE_POOL)
+            return SECRET_NOISE_POOL
+        except Exception:
+            return []
+
+    # ---------- new style (exact expected name + HMAC with per-file salt) ----------
     if password is None:
         try:
             password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
         except Exception:
             return []
-
     if not password:
         return []
 
     try:
-        # Decrypt using the same settings used to encrypt
         result = subprocess.run(
-            [
-                "openssl", "enc", "-d",
-                "-aes-256-cbc",
-                "-pbkdf2",
-                "-in", str(path),
-                "-pass", "stdin"
-            ],
+            ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
+             "-in", str(path), "-pass", "stdin"],
             input=(password + "\n").encode(),
-            capture_output=True,
-            check=True,
-            timeout=30,
+            capture_output=True, check=True, timeout=30,
         )
         content = result.stdout.decode("utf-8", errors="ignore")
+
+        hmac_path = path.with_suffix(".hmac")
+        if not hmac_path.is_file():
+            return []
+
+        data = hmac_path.read_bytes()
+        if len(data) < 16 + 32:          # salt + at least some MAC
+            return []
+
+        salt = data[:16]
+        expected_mac = data[16:]
+
+        key = _v(password, salt)
+        actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
+
+        if not hmac.compare_digest(actual_mac, expected_mac):
+            return []
+
         chars = list(content)
-        SECRET_NOISE_POOL = list(dict.fromkeys(chars))  # deduplicate, preserve order
+        SECRET_NOISE_POOL = list(dict.fromkeys(chars))
         FLAT_SECRET = tuple(SECRET_NOISE_POOL)
         return SECRET_NOISE_POOL
+
     except Exception:
         SECRET_NOISE_POOL = []
         FLAT_SECRET = tuple()

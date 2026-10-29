@@ -62,7 +62,7 @@ Seed phrases alone are no longer enough.
 
 This tool is built to show and recommend an integrated approach: multisig co-signers, airgapped cold wallets, and advanced passphrase with high entropy custom derivation paths, as well as intentionally slowing down brute force and making (noise) patterns highly unpredictable.
 
-**2026 Coldcard weak-RNG reports:** Trusted hardware can still create weak seeds. If entropy was weak at generation, safe storage does not help. A firmware bug from 2021 made Coldcard fall back to a weak software RNG giving about 40 bits on Mk2 and Mk3 and about 72 bits on Mk4 and Q instead of using the hardware RNG. That led to three to four attack waves starting July 30 2026 that drained around 1789 BTC or about 114 million dollars from around 8865 addresses. All seeds made without extra entropy on Mk2, Mk3, Mk4, Q and Mk5 were at risk, while seeds made with 50 or more private dice rolls were safe.
+**2025 Coldcard weak-RNG reports:** Trusted hardware can still create weak seeds. If entropy was weak at generation, safe storage does not help. A firmware bug from 2021 made Coldcard fall back to a weak software RNG giving about 40 bits on Mk2 and Mk3 and about 72 bits on Mk4 and Q instead of using the hardware RNG. That led to three to four attack waves starting July 30 2026 that drained around 1789 BTC or about 114 million dollars from around 8865 addresses. All seeds made without extra entropy on Mk2, Mk3, Mk4, Q and Mk5 were at risk, while seeds made with 50 or more private dice rolls were safe.
 
 This is why offline verifiable entropy like this custom path generator matters. You can prove entropy at generation time and not trust a closed check, even when a seed had been exposed without knowing.
 
@@ -103,9 +103,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 | Useful as a BIP39 passphrase (25th word) | Audited financial software |
 | Local Python (no network for core generation) | Protection against phishing or blind signing |
 | Built around tested noisy-path behavior on selected wallets | A guarantee that noise is ignored on all firmware/apps |
-| A TOOL YOU CAN USE AS EITHER A CUSTOM PATH OR A PASSPHRASE, OR BOTH (if you must choose one, use it as Passphrase (stronger cryptographic security and protection of your crypto wallet))| IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
-| A tool that is compatible with safepal wallet (passphrase only but maximum of 128 characters (meaning you must modify the target_length of this generator (config.py file)), TokenPocket and AirgapVault wallet (Best options - both as passphrase and custom derivation path) etc.| IT IS NOT COMPATIBLE WITH MOST WALLETS such as MetaMask, Trust Wallet etc. which do not have advanced features like passphrase|
-
+| CAN BE USED EITHER OR BOTH AS CUSTOM PATH OR PASSPHRASE | IT IS NOT A STANDARD OR COMMON PATH COMPATIBLE WITH MOST WALLETS|
 
 
 **Recommended use order**
@@ -114,7 +112,7 @@ Tweaking alphabets, characters, and digits around that idea led to this project:
 2. Custom path only where the wallet truly accepts it
 3. Separate path + separate passphrase for stronger separation
 4. Same string for both only if you accept less separation
-5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER PASSWORD 🔑 , *Facebook Password* etc. JUST LIKE THE AUTHOR DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
+5. TWO DIFFERENT CUSTOM PATHS: ONE AS CUSTOM PATH, THE OTHER FOR PASSPHRASE (MOST RECOMMENDED BUT REQUIRES MORE PROPER STORAGE. NB: YOU CAN USE THIS GENERATOR OUTPUT EVEN FOR BITWARDEN MASTER PASSWORD 🔑 JUST LIKE THE AUTHOR DOES - WITH IT STORED IN A SECOND BITWARDEN ACCOUNT WITHOUT COMPLEX PASSWORD FOR EASY ACCESS AND AVOIDING SELF LOCK-OUT 🔒 🔐)
 
 **If you lose the factor(s), funds can be gone forever.**
 
@@ -189,10 +187,8 @@ High-entropy string for use as an extra factor (e.g. BIP39 passphrase), stored a
 | :--- | :--- |
 | AirGap Vault | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
 | TokenPocket | Custom path + passphrase (noisy-path behavior aligned with project origin tests) |
-| BlueWallet * | Passphrase only |
-| Electrum * | Passphrase only |
-
-* Another name for Passphrase in most/other wallets is Advanced Mode
+| BlueWallet | Passphrase only |
+| Electrum | Passphrase only |
 
 The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170D4cBd2Ca8b186900EE731d38E84E7e5C8) informed the design goal: entropy noise without an immediate “invalid index” failure on those stacks. **Re-check on your device and version.** Support and parsing can change.
 
@@ -207,19 +203,15 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
       crypto.py
       generator.py
       pools.py
-    README.md
+      sanitizer.py
+      ui.py
     LICENSE
-    SECURITY.md
-    
+    README.md
+
 ---
 ## Contributing
 
 Please include reproducible tests for code changes and exact wallet/version details for compatibility claims. Do not include real recovery phrases, private keys, passphrases, or funded-wallet data in issues or pull requests.
-
-NB: IF YOU FIND THIS TOOL REALLY HELPFUL, YOU MAY TIP THE AUTHOR...
-BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre 
-
-        377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
 
 ---
 
@@ -237,7 +229,7 @@ BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
     cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
-    python3 main.py               # python main.py also works, always 
+    python3 main.py
 
 or, if you do not want to use a virtual environment:
 
@@ -297,3 +289,5 @@ This software is provided **as-is**, without warranty. Digital asset loss can be
 ---
 
 *Protect your sovereignty. Assume breach. Verify recovery.*
+
+
