@@ -11,7 +11,6 @@ from custompath.security import (
     is_debugger_present,
     is_terminal_recorder_present,
     clear_clipboard_after,
-    clear_terminal_scrollback,
     secure_cleanup
 )
 import hashlib
@@ -19,6 +18,8 @@ import sys
 import os
 import shutil
 import subprocess
+import threading
+import time
 
 def copy_to_clipboard(text):
     cmds = []
@@ -51,6 +52,19 @@ def copy_to_clipboard(text):
         except Exception:
             continue
     return False
+
+def clear_terminal_after(seconds: int = 90):
+    """Clear the terminal screen and scrollback after a delay."""
+    def _clear():
+        time.sleep(seconds)
+        try:
+            sys.stdout.write("\033[3J\033[H\033[2J")
+            sys.stdout.flush()
+            print("Terminal cleared for security.")
+        except Exception:
+            pass
+    t = threading.Thread(target=_clear, daemon=True)
+    t.start()
 
 def print_header():
     print("=" * 70)
@@ -150,7 +164,7 @@ def generate_path(paranoid: bool = False):
     print(f"Levels: {levels} (excluding the final /0/0)")
 
     if paranoid:
-        print("\n[Paranoid mode] Result was printed because clipboard is unreliable on Termux.")
+        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
 
     if copy_to_clipboard(result):
         print("Path also copied to clipboard.")
@@ -159,7 +173,9 @@ def generate_path(paranoid: bool = False):
     else:
         print("Could not copy to clipboard.")
 
-    clear_terminal_scrollback()
+    print("⚠️  Terminal will be cleared in 90 seconds for security...")
+    clear_terminal_after(90)
+
     secure_cleanup(result)
 
 def generate_password(paranoid: bool = False):
@@ -234,7 +250,7 @@ def generate_password(paranoid: bool = False):
     print(f"Length: {len(result)} characters")
 
     if paranoid:
-        print("\n[Paranoid mode] Result was printed because clipboard is unreliable on Termux.")
+        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
 
     if copy_to_clipboard(result):
         print("Password also copied to clipboard.")
@@ -243,7 +259,9 @@ def generate_password(paranoid: bool = False):
     else:
         print("Could not copy to clipboard.")
 
-    clear_terminal_scrollback()
+    print("⚠️  Terminal will be cleared in 90 seconds for security...")
+    clear_terminal_after(90)
+
     secure_cleanup(result)
 
 def main():
