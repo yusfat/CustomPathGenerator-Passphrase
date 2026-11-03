@@ -1,8 +1,9 @@
 # ============================================================
-# FILE: main.py
+# FILE: main.py   (Simplified – Paranoid mode always prints)
 # ============================================================
 
 #!/usr/bin/env python3
+# main.py
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
@@ -21,8 +22,6 @@ import subprocess
 
 def copy_to_clipboard(text):
     cmds = []
-
-    # Termux support (multiple possible locations)
     termux_candidates = [
         "/data/data/com.termux/files/usr/bin/termux-clipboard-set",
         "termux-clipboard-set",
@@ -30,7 +29,6 @@ def copy_to_clipboard(text):
     for t in termux_candidates:
         if t == "termux-clipboard-set" or os.path.exists(t):
             cmds.append([t])
-
     if shutil.which("xclip"):
         cmds.append(["xclip", "-selection", "clipboard"])
     if shutil.which("xsel"):
@@ -143,40 +141,23 @@ def generate_path(paranoid: bool = False):
     print("\nGenerating path...")
     result, levels = make_path(combined, target_len)
 
-    copied = copy_to_clipboard(result)
+    print("\n" + "=" * 70)
+    print("DERIVATION PATH")
+    print("=" * 70)
+    print(result)
+    print(".")
+    print(f"Length: {len(result)} characters")
+    print(f"Levels: {levels} (excluding the final /0/0)")
 
     if paranoid:
-        if copied:
-            print("\n[Paranoid mode] Path not printed to screen.")
-            print("Path copied to clipboard only.")
-            print("Clipboard will be cleared automatically in 45 seconds.")
-            clear_clipboard_after(45)
-        else:
-            print("\n[Paranoid mode] Clipboard failed.")
-            print("Falling back to screen print (otherwise secret would be lost).")
-            print("\n" + "=" * 70)
-            print("DERIVATION PATH")
-            print("=" * 70)
-            print(result)
-            print(".")
-            print(f"Length: {len(result)} characters")
-            print(f"Levels: {levels} (excluding the final /0/0)")
-    else:
-        print("\n" + "=" * 70)
-        print("DERIVATION PATH")
-        print("=" * 70)
-        print(result)
-        print(".")
-        print(".")
-        print(f"Length: {len(result)} characters")
-        print(f"Levels: {levels} (excluding the final /0/0)")
+        print("\n[Paranoid mode] Result was printed because clipboard is unreliable on Termux.")
 
-        if copied:
-            print("Path copied to clipboard.")
-            print("Clipboard will be cleared automatically in 45 seconds.")
-            clear_clipboard_after(45)
-        else:
-            print("Could not copy automatically – please copy it yourself.")
+    if copy_to_clipboard(result):
+        print("Path also copied to clipboard.")
+        print("Clipboard will be cleared automatically in 45 seconds.")
+        clear_clipboard_after(45)
+    else:
+        print("Could not copy to clipboard.")
 
     clear_terminal_scrollback()
     secure_cleanup(result)
@@ -245,37 +226,22 @@ def generate_password(paranoid: bool = False):
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=allow_emoji, allow_invisible=allow_invisible, allow_space=allow_space)
 
-    copied = copy_to_clipboard(result)
+    print("\n" + "=" * 70)
+    print("GENERATED PASSWORD / PASSPHRASE")
+    print("=" * 70)
+    print(result)
+    print(".")
+    print(f"Length: {len(result)} characters")
 
     if paranoid:
-        if copied:
-            print("\n[Paranoid mode] Password not printed to screen.")
-            print("Password copied to clipboard only.")
-            print("Clipboard will be cleared automatically in 45 seconds.")
-            clear_clipboard_after(45)
-        else:
-            print("\n[Paranoid mode] Clipboard failed.")
-            print("Falling back to screen print (otherwise secret would be lost).")
-            print("\n" + "=" * 70)
-            print("GENERATED PASSWORD / PASSPHRASE")
-            print("=" * 70)
-            print(result)
-            print(".")
-            print(f"Length: {len(result)} characters")
-    else:
-        print("\n" + "=" * 70)
-        print("GENERATED PASSWORD / PASSPHRASE")
-        print("=" * 70)
-        print(result)
-        print(".")
-        print(f"Length: {len(result)} characters")
+        print("\n[Paranoid mode] Result was printed because clipboard is unreliable on Termux.")
 
-        if copied:
-            print("Copied to clipboard.")
-            print("Clipboard will be cleared automatically in 45 seconds.")
-            clear_clipboard_after(45)
-        else:
-            print("Could not copy automatically – please copy it yourself.")
+    if copy_to_clipboard(result):
+        print("Password also copied to clipboard.")
+        print("Clipboard will be cleared automatically in 45 seconds.")
+        clear_clipboard_after(45)
+    else:
+        print("Could not copy to clipboard.")
 
     clear_terminal_scrollback()
     secure_cleanup(result)
@@ -294,7 +260,7 @@ def main():
     else:
         print("ℹ️  No secret noise pool loaded (file missing, wrong password, or skipped). Using original pools only.")
 
-    paranoid = input("Enable paranoid mode? (no screen print, clipboard only) (y/n): ").strip().lower() == "y"
+    paranoid = input("Enable paranoid mode? (y/n): ").strip().lower() == "y"
 
     while True:
         print("What do you want to generate?")
