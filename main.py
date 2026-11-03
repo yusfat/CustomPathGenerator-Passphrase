@@ -51,14 +51,15 @@ def copy_to_clipboard(text):
             continue
     return False
 
-def clear_terminal_after(seconds: int = 90):
-    """Clear the terminal screen and scrollback after a delay."""
+def clear_terminal_after(seconds: int = 45):
+    """Clear the terminal after a delay."""
     def _clear():
         time.sleep(seconds)
         try:
             sys.stdout.write("\033[3J\033[H\033[2J")
             sys.stdout.flush()
             print("Terminal cleared for security.")
+            print("You can now generate another one or restart the script.")
         except Exception:
             pass
     t = threading.Thread(target=_clear, daemon=True)
@@ -171,8 +172,8 @@ def generate_path(paranoid: bool = False):
     else:
         print("Could not copy to clipboard.")
 
-    print("⚠️  Terminal will be cleared in 90 seconds for security...")
-    clear_terminal_after(90)
+    print("⚠️  Terminal will be cleared in 45 seconds for security...")
+    clear_terminal_after(45)
 
     secure_cleanup(result)
 
@@ -257,12 +258,19 @@ def generate_password(paranoid: bool = False):
     else:
         print("Could not copy to clipboard.")
 
-    print("⚠️  Terminal will be cleared in 90 seconds for security...")
-    clear_terminal_after(90)
+    print("⚠️  Terminal will be cleared in 45 seconds for security...")
+    clear_terminal_after(45)
 
     secure_cleanup(result)
 
 def main():
+    # Always start with a clean terminal
+    try:
+        sys.stdout.write("\033[3J\033[H\033[2J")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
     print_header()
 
     default_name = _n()
