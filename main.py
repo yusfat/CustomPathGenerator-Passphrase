@@ -60,6 +60,7 @@ def clear_terminal_after(seconds: int = 45):
             sys.stdout.flush()
             print("Terminal cleared for security.")
             print("You can now generate another one or restart the script.")
+            print("Type y for yes to generate another, or n for no.")
         except Exception:
             pass
     t = threading.Thread(target=_clear, daemon=True)
