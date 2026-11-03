@@ -1,4 +1,6 @@
-# custompath/security.py
+# ============================================================
+# FILE: custompath/security.py
+# ============================================================
 
 import sys
 import gc
@@ -9,11 +11,8 @@ import ctypes
 from typing import Any
 
 def is_debugger_present() -> bool:
-    # Original check
     if sys.gettrace() is not None:
         return True
-
-    # Additional lightweight platform checks
     try:
         if sys.platform == "win32":
             kernel32 = ctypes.windll.kernel32
@@ -28,6 +27,13 @@ def is_debugger_present() -> bool:
                                 return True
             except Exception:
                 pass
+        elif sys.platform == "darwin":
+            try:
+                libc = ctypes.CDLL(None)
+                if libc.ptrace(0, 0, 0, 0) == -1:
+                    return True
+            except Exception:
+                pass
     except Exception:
         pass
     return False
@@ -40,15 +46,16 @@ def is_terminal_recorder_present() -> bool:
         "simplescreenrecorder", "vokoscreen", "kazam",
         "gnome-screenshot", "spectacle", "flameshot",
         "screenkey", "keylogger", "logkeys", "xwd",
-        "import", "scrot", "maim"
+        "import", "scrot", "maim", "byzanz", "vnc",
+        "x11vnc", "wayvnc", "wf-recorder", "kooha"
     }
     try:
         import psutil
         for proc in psutil.process_iter(["name", "cmdline", "exe"]):
             try:
                 name = (proc.info.get("name") or "").lower()
-                cmd = " ".join(proc.info.get("cmdline") or []).lower()
-                exe = (proc.info.get("exe") or "").lower()
+                cmd  = " ".join(proc.info.get("cmdline") or []).lower()
+                exe  = (proc.info.get("exe") or "").lower()
                 for s in suspicious:
                     if s in name or s in cmd or s in exe:
                         return True
@@ -59,16 +66,16 @@ def is_terminal_recorder_present() -> bool:
     return False
 
 
-def clear_clipboard_after(seconds: int = 90) -> None:
+def clear_clipboard_after(seconds: int = 45) -> None:
     def _clear():
         time.sleep(seconds)
         commands = [
             ["xsel", "-bc"],
             ["xclip", "-selection", "clipboard", "/dev/null"],
-            ["pbcopy"],                          # macOS
-            ["wl-copy", "--clear"],              # Wayland
-            ["cmd", "/c", "echo off | clip"],    # Windows
-            ["termux-clipboard-set", ""],        # Termux
+            ["pbcopy"],
+            ["wl-copy", "--clear"],
+            ["cmd", "/c", "echo off | clip"],
+            ["termux-clipboard-set", ""],
         ]
         for cmd in commands:
             try:
@@ -82,19 +89,24 @@ def clear_clipboard_after(seconds: int = 90) -> None:
     t.start()
 
 
+def clear_terminal_scrollback() -> None:
+    try:
+        sys.stdout.write("\033[3J\033[H\033[2J")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+
 def secure_cleanup(*secrets: Any) -> None:
-    """Improved best-effort memory cleanup (still limited by Python GC)."""
     for s in secrets:
         if isinstance(s, str) and s:
             try:
-                # Attempt to zero the underlying buffer on CPython
                 buf = (ctypes.c_char * len(s)).from_address(
                     id(s) + sys.getsizeof("") - 1
                 )
                 ctypes.memset(buf, 0, len(s))
             except Exception:
                 pass
-            # Force replacement
             s = "\0" * len(s)
         elif isinstance(s, bytearray):
             for i in range(len(s)):
@@ -104,5 +116,5 @@ def secure_cleanup(*secrets: Any) -> None:
             for i in range(len(ba)):
                 ba[i] = 0
     del secrets
-    gc.collect()
-    gc.collect()
+    for _ in range(3):
+        gc.collect()
