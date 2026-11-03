@@ -249,7 +249,7 @@ or
 
 For STABLE SECURE VERSION:
 
-    git clone --branch v1.1-secure https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+    git clone --branch v1.2-secure https://github.com/yusfat/CustomPathGenerator-Passphrase.git
     cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
