@@ -92,7 +92,8 @@ def get_advanced_salt():
             if layers == 0:
                 final_salt = current
             else:
-                final_salt = hashlib.sha3_512((final_salt + current).encode()).hexdigest() + current
+                # Fixed: no longer appends the last layer in cleartext
+                final_salt = hashlib.sha3_512((final_salt + current).encode()).hexdigest()
             layers += 1
             if input("Add another layer? (y/n): ").strip().lower() != "y":
                 break
