@@ -1,4 +1,6 @@
-#===== custompath/crypto.py =====
+# ============================================================
+# FILE: custompath/crypto.py
+# ============================================================
 
 import secrets
 import hashlib
@@ -13,7 +15,6 @@ BANNED = {'/', '\\', '"', "'"}
 SAFE_PUNCT = ''.join(c for c in string.punctuation if c not in BANNED)
 YUSFAT_ASCII_NOISE = list(string.ascii_letters + string.digits + SAFE_PUNCT)
 
-# Full original pool (used for paths and services that allow everything)
 YUSFAT_NOISE_POOL = (
     YUSFAT_ASCII_NOISE
     + EMOJI_POOL
@@ -32,13 +33,11 @@ YUSFAT_NOISE_POOL = (
 )
 
 def smart_flatten(pool):
-    """Turn any mix of strings/lists into a flat list of single characters."""
     result = []
     for item in pool:
         result.extend(list(item))
     return result
 
-# Pre-built pools (loaded once) #cleaner, more secure / zero bias
 FLAT_INVISIBLES = tuple(set(smart_flatten(INVISIBLES + inviSible_70)))
 FLAT_SPACES     = tuple(set(smart_flatten(SPACES)))
 FLAT_EMOJI      = tuple(set(smart_flatten(EMOJI_POOL + EMOJI_POOL_3 + SAFE_EMOJIS)))
@@ -49,9 +48,8 @@ FLAT_SCRIPTS    = tuple(set(smart_flatten(
 )))
 FLAT_NON_ASCII  = tuple(set(smart_flatten(NON_ASCII_LETTERS)))
 FLAT_YUSFAT     = tuple(set(smart_flatten(YUSFAT_NOISE_POOL)))
-FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))          # letters + digits + normal specials only
+FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))
 
-# ---- Optional secret noise pool (password-protected, additive) ----
 SECRET_NOISE_POOL = []
 FLAT_SECRET = tuple()
 
@@ -64,12 +62,11 @@ def _n() -> str:
     return raw.decode() + h + ".enc"
 
 def _v(password: str, salt: bytes) -> bytes:
-    
     info = _t(bytes([25,47,41,46,53,55,10,59,46,50,20,53,51,41,63,18,23,27,25,44,107]))
     return hashlib.pbkdf2_hmac(
         "sha3_512",
         password.encode("utf-8"),
-        salt + info,          
+        salt + info,
         2000000,
         dklen=64
     )
@@ -85,9 +82,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not path.is_file():
         return []
 
-    # ---------- old style (any name that is not the special one) ----------
     if path.name != expected:
-        # original behaviour – no HMAC required
         if password is None:
             try:
                 password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
@@ -110,7 +105,6 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
         except Exception:
             return []
 
-    # ---------- new style (exact expected name + HMAC with per-file salt) ----------
     if password is None:
         try:
             password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
@@ -133,7 +127,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
             return []
 
         data = hmac_path.read_bytes()
-        if len(data) < 16 + 32:          # salt + at least some MAC
+        if len(data) < 16 + 32:
             return []
 
         salt = data[:16]
@@ -173,60 +167,73 @@ def make_random_salt(min_len=60, max_len=180, pool=None):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     return ''.join(secrets.choice(pool) for _ in range(length))
 
-def pick_from(seq, salt_bytes, counter):
-    if not seq:
-        return ''
-    h = hmac.new(salt_bytes, str(counter).encode(), hashlib.sha3_512).digest()
-    return seq[int.from_bytes(h[:8], 'big') % len(seq)]
+def make_session_pools():
+    def _shuf(seq):
+        lst = list(seq)
+        secrets.SystemRandom().shuffle(lst)
+        return tuple(lst)
 
-def make_noise(salt_bytes, counter, min_len=1, max_len=4):
+    return {
+        "invisibles": _shuf(FLAT_INVISIBLES),
+        "spaces":     _shuf(FLAT_SPACES),
+        "emoji":      _shuf(FLAT_EMOJI),
+        "extra":      _shuf(FLAT_EXTRA),
+        "scripts":    _shuf(FLAT_SCRIPTS),
+        "non_ascii":  _shuf(FLAT_NON_ASCII),
+        "yusfat":     _shuf(FLAT_YUSFAT),
+        "secret":     _shuf(FLAT_SECRET) if FLAT_SECRET else tuple(),
+        "standard":   _shuf(FLAT_STANDARD),
+    }
+
+def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
+    if session_pools is None:
+        session_pools = make_session_pools()
+
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
+
+    candidates = []
+    candidates.extend(session_pools["invisibles"])
+    candidates.extend(session_pools["spaces"])
+    candidates.extend(session_pools["emoji"])
+    candidates.extend(session_pools["extra"])
+    candidates.extend(session_pools["scripts"])
+    candidates.extend(session_pools["non_ascii"])
+    if session_pools["secret"]:
+        candidates.extend(session_pools["secret"])
+    candidates.extend(session_pools["yusfat"])
+
+    if not candidates:
+        candidates = list(FLAT_STANDARD)
+
+    secrets.SystemRandom().shuffle(candidates)
+
     for _ in range(length):
-        r = int.from_bytes(
-            hmac.new(salt_bytes, f"n{counter}".encode(), hashlib.sha3_512).digest()[:1],
-            'big'
-        ) % 100
-        counter += 1
-        if r < 12:
-            char = pick_from(FLAT_INVISIBLES, salt_bytes, counter)
-        elif r < 22:
-            char = pick_from(FLAT_SPACES, salt_bytes, counter)
-        elif r < 38:
-            char = pick_from(FLAT_EMOJI, salt_bytes, counter)
-        elif r < 52:
-            char = pick_from(FLAT_EXTRA, salt_bytes, counter)
-        elif r < 68:
-            char = pick_from(FLAT_SCRIPTS, salt_bytes, counter)
-        elif r < 80:
-            char = pick_from(FLAT_NON_ASCII, salt_bytes, counter)
-        elif r < 95 and FLAT_SECRET:          # MORE FREQUENT use of secret pool (~15% slice)
-            char = pick_from(FLAT_SECRET, salt_bytes, counter)
-        else:
-            char = pick_from(FLAT_YUSFAT, salt_bytes, counter)
+        char = secrets.choice(candidates)
         parts.append(char)
         counter += 1
     return ''.join(parts), counter
 
-def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False):
-    """Build a character pool according to the rules the user selected."""
+def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False, session_pools=None):
+    if session_pools is None:
+        session_pools = make_session_pools()
+
     if standard_only:
-        pool = list(FLAT_STANDARD)
+        pool = list(session_pools["standard"])
     else:
-        pool = list(FLAT_STANDARD)
+        pool = list(session_pools["standard"])
         if allow_emoji:
-            pool.extend(FLAT_EMOJI)
-            pool.extend(FLAT_EXTRA)
-            pool.extend(FLAT_SCRIPTS)
-            pool.extend(FLAT_NON_ASCII)
+            pool.extend(session_pools["emoji"])
+            pool.extend(session_pools["extra"])
+            pool.extend(session_pools["scripts"])
+            pool.extend(session_pools["non_ascii"])
         if allow_invisible:
-            pool.extend(FLAT_INVISIBLES)
+            pool.extend(session_pools["invisibles"])
         if allow_space:
-            pool.extend(FLAT_SPACES)
-        # ---- additive: include secret pool when available and full noise is allowed ----
-        if FLAT_SECRET and allow_emoji and allow_invisible:
-            pool.extend(FLAT_SECRET)
-    # remove duplicates while keeping order
+            pool.extend(session_pools["spaces"])
+        if session_pools["secret"] and allow_emoji and allow_invisible:
+            pool.extend(session_pools["secret"])
+
     seen = set()
     clean = []
     for c in pool:
@@ -236,8 +243,7 @@ def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True
     return clean if clean else list(FLAT_STANDARD)
 
 def make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False):
-    """Generate a high-entropy password that respects the chosen limits."""
-    pool = build_password_pool(allow_emoji, allow_invisible, allow_space, standard_only)
-    # always use at least 80% of the allowed maximum for strength
+    session_pools = make_session_pools()
+    pool = build_password_pool(allow_emoji, allow_invisible, allow_space, standard_only, session_pools)
     min_len = max(16, int(max_len * 0.95))
     return make_random_salt(min_len=min_len, max_len=max_len, pool=pool)
