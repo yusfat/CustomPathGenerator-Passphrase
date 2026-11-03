@@ -194,7 +194,6 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
 
-    # Build combined pool once (no re-shuffle every call)
     candidates = []
     candidates.extend(session_pools["invisibles"])
     candidates.extend(session_pools["spaces"])
