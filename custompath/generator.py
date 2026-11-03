@@ -1,10 +1,12 @@
-#===== custompath/generator.py =====
+# ============================================================
+# FILE: custompath/generator.py
+# ============================================================
 
 import secrets
 import hashlib
 import hmac
 from .config import MAX_INDEX
-from .crypto import make_noise
+from .crypto import make_noise, make_session_pools
 
 def make_number(salt_bytes, counter):
     h = hmac.new(salt_bytes, f"i{counter}".encode(), hashlib.sha3_512).digest()
@@ -17,24 +19,25 @@ def make_number(salt_bytes, counter):
 
 def make_path(final_salt, target_len):
     salt_bytes = hashlib.sha3_512(final_salt.encode('utf-8')).digest()
+
+    # Non-deterministic starting counter
+    counter = secrets.randbits(64)
+
     levels = secrets.randbelow(80) + 220
     parts = ['m']
-    counter = 0
+
+    session_pools = make_session_pools()
 
     for i in range(levels):
         idx, counter = make_number(salt_bytes, counter)
         num = idx
 
-        # ---------- Hardened decision (Version 4 / Hybrid-99) ----------
-        # Last 50 levels: 99% Version 2 (pure varying 30-70%) + 1% Version 3
         if i < levels - 50:
-            # Early / middle levels (original behaviour)
             hardened = (i < 200) or (secrets.randbelow(100) < 75)
         else:
-            # Version 4 – 99 : 1 mix
-            if secrets.randbelow(100) < 99:          # 99% (Version 2)
+            if secrets.randbelow(100) < 99:
                 hardened = secrets.randbelow(100) < (30 + secrets.randbelow(41))
-            else:                                    # 1% (Version 3)
+            else:
                 if secrets.randbelow(100) < 82:
                     hardened = (i + secrets.randbelow(2)) % 2 == 0
                 else:
@@ -42,32 +45,26 @@ def make_path(final_salt, target_len):
 
         if (100001 <= int(num) <= MAX_INDEX) and (8 <= secrets.randbelow(100) < 15):
             noise_spot = max(1, int(len(num) * 0.7))
-            noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
+            noise_inside, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3, session_pools=session_pools)
             num = num[:noise_spot] + noise_inside + num[noise_spot:]
 
-        noise1, counter = make_noise(salt_bytes, counter, min_len=1, max_len=2)
-        noise2, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3)
+        noise1, counter = make_noise(salt_bytes, counter, min_len=1, max_len=2, session_pools=session_pools)
+        noise2, counter = make_noise(salt_bytes, counter, min_len=1, max_len=3, session_pools=session_pools)
 
-        if hardened:  # crypto wallet import risk management proactive measure(s)
-            # Extract ONLY real ASCII digits 0-9
-            # (Unicode look-alikes like ➄, ②, ５, ² etc. are intentional noise and must be ignored)
+        if hardened:
             pure = ''.join(c for c in (num + noise1) if c in '0123456789') or '0'
-
-            # Safe conversion + hard enforcement of MAX_INDEX (2**31 - 1)
             try:
                 pure_int = int(pure)
             except ValueError:
                 pure_int = 0
 
             if len(pure) > 10 or pure_int > MAX_INDEX:
-                # Keep the longest valid prefix that still fits in a signed 31-bit integer
                 candidate = pure[:10] if len(pure) > 10 else pure
                 try:
                     if int(candidate) > MAX_INDEX:
                         candidate = pure[:9]
                 except ValueError:
                     candidate = '0'
-
                 num = candidate
                 noise1 = ''
 
