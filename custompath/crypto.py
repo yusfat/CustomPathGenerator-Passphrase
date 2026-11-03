@@ -168,6 +168,7 @@ def make_random_salt(min_len=60, max_len=180, pool=None):
     return ''.join(secrets.choice(pool) for _ in range(length))
 
 def make_session_pools():
+    """Create fresh non-deterministic session pools from the public lists (once per generation)."""
     def _shuf(seq):
         lst = list(seq)
         secrets.SystemRandom().shuffle(lst)
@@ -186,12 +187,14 @@ def make_session_pools():
     }
 
 def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
+    """Fast non-deterministic noise selection."""
     if session_pools is None:
         session_pools = make_session_pools()
 
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
 
+    # Build combined pool once (no re-shuffle every call)
     candidates = []
     candidates.extend(session_pools["invisibles"])
     candidates.extend(session_pools["spaces"])
@@ -206,12 +209,11 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
     if not candidates:
         candidates = list(FLAT_STANDARD)
 
-    secrets.SystemRandom().shuffle(candidates)
-
     for _ in range(length):
         char = secrets.choice(candidates)
         parts.append(char)
         counter += 1
+
     return ''.join(parts), counter
 
 def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False, session_pools=None):
