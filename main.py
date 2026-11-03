@@ -1,3 +1,7 @@
+# ============================================================
+# FILE: main.py
+# ============================================================
+
 #!/usr/bin/env python3
 # main.py
 
@@ -7,6 +11,7 @@ from custompath.security import (
     is_debugger_present,
     is_terminal_recorder_present,
     clear_clipboard_after,
+    clear_terminal_scrollback,
     secure_cleanup
 )
 import hashlib
@@ -17,22 +22,17 @@ import subprocess
 
 def copy_to_clipboard(text):
     cmds = []
-
     termux_bin = "/data/data/com.termux/files/usr/bin/termux-clipboard-set"
     if os.path.exists(termux_bin):
         cmds.append([termux_bin])
-
     if shutil.which("xclip"):
         cmds.append(["xclip", "-selection", "clipboard"])
     if shutil.which("xsel"):
         cmds.append(["xsel", "--clipboard", "--input"])
-
     if shutil.which("pbcopy"):
         cmds.append(["pbcopy"])
-
     if os.name == "nt":
         cmds.append(["cmd", "/c", "clip"])
-
     for cmd in cmds:
         try:
             subprocess.run(
@@ -92,7 +92,6 @@ def get_advanced_salt():
             if layers == 0:
                 final_salt = current
             else:
-                # Fixed: no longer appends the last layer in cleartext
                 final_salt = hashlib.sha3_512((final_salt + current).encode()).hexdigest()
             layers += 1
             if input("Add another layer? (y/n): ").strip().lower() != "y":
@@ -119,7 +118,7 @@ def security_gate():
         return False
     return True
 
-def generate_path():
+def generate_path(paranoid: bool = False):
     if not security_gate():
         return
 
@@ -137,37 +136,49 @@ def generate_path():
     print("\nGenerating path...")
     result, levels = make_path(combined, target_len)
 
-    print("\n" + "=" * 70)
-    print("DERIVATION PATH")
-    print("=" * 70)
-    print(result)
-    print(".")
-    print(".")
-    print(f"Length: {len(result)} characters")
-    print(f"Levels: {levels} (excluding the final /0/0)")
-
-    if copy_to_clipboard(result):
-        print("Path copied to clipboard.")
-        print("Clipboard will be cleared automatically in 90 seconds.")
-        clear_clipboard_after(90)
+    if paranoid:
+        print("\n[Paranoid mode] Path not printed to screen.")
+        if copy_to_clipboard(result):
+            print("Path copied to clipboard only.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy to clipboard – generation aborted for safety.")
+            secure_cleanup(result)
+            return
     else:
-        print("Could not copy automatically – please copy it yourself.")
+        print("\n" + "=" * 70)
+        print("DERIVATION PATH")
+        print("=" * 70)
+        print(result)
+        print(".")
+        print(".")
+        print(f"Length: {len(result)} characters")
+        print(f"Levels: {levels} (excluding the final /0/0)")
 
+        if copy_to_clipboard(result):
+            print("Path copied to clipboard.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy automatically – please copy it yourself.")
+
+    clear_terminal_scrollback()
     secure_cleanup(result)
 
-def generate_password():
+def generate_password(paranoid: bool = False):
     if not security_gate():
         return
 
     print("\nSelect service / limit:")
-    print("1. SafePal          (max 128 chars, full noise allowed where some emojis count as 3 charactes and more etc. so maximum enforced length must be lesser than 128)")
+    print("1. SafePal          (max 128 chars, full noise allowed)")
     print("2. Gmail            (max 100 chars, letters/digits/standard specials only)")
     print("3. Coursera          (max 71 chars)")
     print("4. GitHub / General (emojis & noise ok, longer)")
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
 
-    if choice == "1":  # SafePal (75 safe;1110 safe for Token pocket/airgapv)
+    if choice == "1":
         value = 1110
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
@@ -179,11 +190,9 @@ def generate_password():
                 continue
             max_len = int(raw)
             if not 75 <= max_len <= value:
-                print(f"Invalid! Must be between 75 and {value}. You entered {max_len}. '75 safe for SAFEPAL;1150 safe for TOKENPOCKET/AIRGAPV'.")
+                print(f"Invalid! Must be between 75 and {value}.")
                 continue
             break
-
-        print("\nSafePal options:")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
 
@@ -195,18 +204,15 @@ def generate_password():
 
     elif choice == "3":
         max_len = 71
-        print("\nCoursera options:")
         use_full = input("Use full noise (emoji + invisible)? (y/n): ").strip().lower() == "y"
+        allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         if use_full:
-            allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
             result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
         else:
-            allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
             result = make_password(max_len, allow_emoji=False, allow_invisible=False, allow_space=allow_space, standard_only=True)
 
     elif choice == "4":
         max_len = 200
-        print("\nGitHub / general (full noise allowed)")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
 
@@ -224,20 +230,32 @@ def generate_password():
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=allow_emoji, allow_invisible=allow_invisible, allow_space=allow_space)
 
-    print("\n" + "=" * 70)
-    print("GENERATED PASSWORD / PASSPHRASE")
-    print("=" * 70)
-    print(result)
-    print(".")
-    print(f"Length: {len(result)} characters")
-
-    if copy_to_clipboard(result):
-        print("Copied to clipboard.")
-        print("Clipboard will be cleared automatically in 90 seconds.")
-        clear_clipboard_after(90)
+    if paranoid:
+        print("\n[Paranoid mode] Password not printed to screen.")
+        if copy_to_clipboard(result):
+            print("Password copied to clipboard only.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy to clipboard – generation aborted for safety.")
+            secure_cleanup(result)
+            return
     else:
-        print("Could not copy automatically – please copy it yourself.")
+        print("\n" + "=" * 70)
+        print("GENERATED PASSWORD / PASSPHRASE")
+        print("=" * 70)
+        print(result)
+        print(".")
+        print(f"Length: {len(result)} characters")
 
+        if copy_to_clipboard(result):
+            print("Copied to clipboard.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy automatically – please copy it yourself.")
+
+    clear_terminal_scrollback()
     secure_cleanup(result)
 
 def main():
@@ -254,6 +272,8 @@ def main():
     else:
         print("ℹ️  No secret noise pool loaded (file missing, wrong password, or skipped). Using original pools only.")
 
+    paranoid = input("Enable paranoid mode? (no screen print, clipboard only) (y/n): ").strip().lower() == "y"
+
     while True:
         print("What do you want to generate?")
         print("1. Long custom derivation path (for advanced wallets)")
@@ -261,9 +281,9 @@ def main():
         choice = input("Choice (1/2): ").strip()
 
         if choice == "1":
-            generate_path()
+            generate_path(paranoid=paranoid)
         else:
-            generate_password()
+            generate_password(paranoid=paranoid)
 
         print("\nChecklist:")
         print("  - Save the final result in a password manager")
