@@ -79,10 +79,10 @@ def print_header():
 def get_target_length():
     while True:
         try:
-            value = int(input("Path length (2000-2150): ").strip())
-            if 2000 <= value <= 2150:
+            value = int(input("Path length (2000-2100): ").strip())
+            if 2000 <= value <= 2100:
                 return value
-            print("Must be between 2000 and 2150.")
+            print("Must be between 2000 and 2100.")
         except ValueError:
             print("Enter a number.")
 
