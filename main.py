@@ -1,22 +1,42 @@
 # ============================================================
-# FILE: main.py   (Simplified – Paranoid mode always prints)
+# FILE: main.py   (NOVEMBER4 NETWORK HARDENED - Version 2)
 # ============================================================
 #!/usr/bin/env python3
 
-# kill switch CORRECT VERSION
-import sys, socket
+# kill switch - VERSION 2 NETWORK HARDENED
+import socket
+import sys
+import time
+import threading
+import os
 
 def has_network():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(1)
-        s.connect(("8.8.8.8", 53))
-        s.close()
-        return True
-    except OSError:
-        return False
-    except Exception:
-        return True
+    for ip in ("8.8.8.8", "1.1.1.1"):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(1)
+            s.connect((ip, 53))
+            s.close()
+            return True
+        except:
+            pass
+    for ip in ("2001:4860:4860::8888", "2606:4700:4700::1111"):
+        try:
+            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            s.settimeout(1)
+            s.connect((ip, 53))
+            s.close()
+            return True
+        except:
+            pass
+    return False
+
+def network_guard():
+    while True:
+        time.sleep(3)
+        if has_network():
+            print("\n[!] NETWORK TURNED ON MID-EXECUTION - ABORTING!")
+            os._exit(1)
 
 print("=" * 70)
 print("  CustomPathGenerator-Passphrase")
@@ -32,14 +52,16 @@ if has_network():
     print("This is NOT an error. This is protection.")
     print("\nYour secrets are safe because we refused to run.")
     print("\nTo continue:")
-    print("  1. Turn ON Airplane Mode")
-    print("  2. Turn OFF WiFi and Mobile Data")
-    print("  3. Restart the app/phone, or wait 2-3 minutes")
+    print("  1. Turn ON Airplane Mode / Flight Mode")
+    print("  2. Turn OFF WiFi & Data / Unplug Ethernet")
+    print("  3. Restart the app/phone/system, or wait 2-3 minutes")
     print("     (Android keeps old network routes for a while)")
     print("="*50)
     sys.exit(1)
 
 print("[OK] Offline verified. Vault is isolated.")
+print("[OK] Starting continuous network guard...")
+threading.Thread(target=network_guard, daemon=True).start()
 
 def _blocked(*a, **k):
     raise RuntimeError("Network blocked by policy")
@@ -59,11 +81,8 @@ from custompath.security import (
     secure_cleanup
 )
 import hashlib
-import os
 import shutil
 import subprocess
-import threading
-import time
 
 def copy_to_clipboard(text):
     cmds = []
