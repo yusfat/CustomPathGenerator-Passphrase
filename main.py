@@ -34,7 +34,8 @@ if has_network():
     print("\nTo continue:")
     print("  1. Turn ON Airplane Mode")
     print("  2. Turn OFF WiFi and Mobile Data")
-    print("  3. Restart the app")
+    print("  3. Restart the app/phone, or wait 2-3 minutes")
+    print("     (Android keeps old network routes for a while)")
     print("="*50)
     sys.exit(1)
 
