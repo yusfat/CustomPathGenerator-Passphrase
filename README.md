@@ -307,3 +307,23 @@ This software is provided **as-is**, without warranty. Digital asset loss can be
 ---
 
 *Protect your sovereignty. Assume breach. Verify recovery.*
+## v1.3-secure - Hardened Secure Version
+**Security hardening over v1.2-secure:**
+- offline check: UDP route -> TCP handshake to 8.8.8.8/1.1.1.1:53/80 (fixes Android stale route)
+- network guard: save _REAL_SOCKET before patch, continuous 3s guard aborts with os._exit(1) + screen clear
+- paranoia mode: 45s clipboard + 45s terminal clear, IPv4/IPv6 targets
+- secure_cleanup improved (screen wipe on reconnect)
+
+## v1.3-secure - Hardened Secure Version
+**Security hardening over v1.2-secure:**
+- offline check: UDP route -> TCP handshake to 8.8.8.8/1.1.1.1:53/80 (fixes Android stale route)
+- network guard: save _REAL_SOCKET before patch, continuous 3s guard aborts with os._exit(1) + screen clear
+- paranoia mode: 45s clipboard + 45s terminal clear, IPv4/IPv6 targets
+- secure_cleanup improved (screen wipe on reconnect)
+
+## v1.3-secure - Hardened Secure Version
+**Security hardening over v1.2-secure:**
+- offline check: UDP route -> TCP handshake to 8.8.8.8/1.1.1.1:53/80 (fixes Android stale route)
+- network guard: save _REAL_SOCKET before patch, continuous 3s guard aborts with os._exit(1) + screen clear
+- paranoia mode: 45s clipboard + 45s terminal clear, IPv4/IPv6 targets
+- secure_cleanup improved (screen wipe on reconnect)
