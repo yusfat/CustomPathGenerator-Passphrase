@@ -18,9 +18,27 @@ def has_network():
     except Exception:
         return True
 
+print("=" * 70)
+print("  CustomPathGenerator-Passphrase")
+print("  High-entropy path & password generator")
+print("=" * 70)
+print("[*] Checking offline status... (security measure)")
+
 if has_network():
-    print("\n[!] NETWORK DETECTED - ABORTING")
+    print("\n" + "="*50)
+    print("[!] SECURITY LOCK: NETWORK DETECTED")
+    print("="*50)
+    print("This tool will NEVER run while online.")
+    print("This is NOT an error. This is protection.")
+    print("\nYour secrets are safe because we refused to run.")
+    print("\nTo continue:")
+    print("  1. Turn ON Airplane Mode")
+    print("  2. Turn OFF WiFi and Mobile Data")
+    print("  3. Restart the app")
+    print("="*50)
     sys.exit(1)
+
+print("[OK] Offline verified. Vault is isolated.")
 
 def _blocked(*a, **k):
     raise RuntimeError("Network blocked by policy")
@@ -28,6 +46,8 @@ def _blocked(*a, **k):
 socket.socket = _blocked
 socket.create_connection = _blocked
 socket.socketpair = _blocked
+
+print("[OK] Network stack disabled for this session.\n")
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
@@ -38,7 +58,6 @@ from custompath.security import (
     secure_cleanup
 )
 import hashlib
-import sys
 import os
 import shutil
 import subprocess
@@ -93,12 +112,6 @@ def clear_terminal_after(seconds: int = 45):
     t.start()
 
 def print_header():
-    print("=" * 70)
-    print("  CustomPathGenerator-Passphrase")
-    print("  High-entropy path & password generator")
-    print("  Advanced users only")
-    print("=" * 70)
-    print()
     print("WARNING: Use at your own risk. Always test recovery with a small amount.")
     print()
 
@@ -291,7 +304,6 @@ def generate_password(paranoid: bool = False):
     secure_cleanup(result)
 
 def main():
-    # Always start with a clean terminal
     try:
         sys.stdout.write("\033[3J\033[H\033[2J")
         sys.stdout.flush()
