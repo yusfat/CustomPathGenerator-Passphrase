@@ -1,5 +1,98 @@
+# ============================================================
+# FILE: main.py   (NOVEMBER4 NETWORK HARDENED - Version 2 + TCP Fix + Guard Blind Fix)
+# ============================================================
 #!/usr/bin/env python3
-# main.py
+
+# kill switch - VERSION 2 FIXED - Guard uses real socket
+import socket
+import sys
+import time
+import threading
+import os
+
+# SAVE REAL SOCKET BEFORE WE BLOCK IT - THIS IS THE FIX
+_REAL_SOCKET = socket.socket
+_REAL_INET = socket.AF_INET
+_REAL_INET6 = socket.AF_INET6
+_REAL_STREAM = socket.SOCK_STREAM
+
+def has_network():
+    # REAL internet test - TCP handshake
+    test_targets = [
+        ("8.8.8.8", 53),
+        ("1.1.1.1", 53),
+        ("8.8.8.8", 80),
+        ("1.1.1.1", 80),
+    ]
+    test_targets_v6 = [
+        ("2001:4860:4860::8888", 53, 0, 0),
+        ("2606:4700:4700::1111", 53, 0, 0),
+    ]
+    for ip, port in test_targets:
+        try:
+            s = _REAL_SOCKET(_REAL_INET, _REAL_STREAM)
+            s.settimeout(1.5)
+            s.connect((ip, port))
+            s.close()
+            return True
+        except:
+            pass
+    for target in test_targets_v6:
+        try:
+            s = _REAL_SOCKET(_REAL_INET6, _REAL_STREAM)
+            s.settimeout(1.5)
+            s.connect(target)
+            s.close()
+            return True
+        except:
+            pass
+    return False
+
+def network_guard():
+    while True:
+        time.sleep(3)
+        if has_network():
+            print("\n[!] NETWORK TURNED ON MID-EXECUTION - ABORTING!")
+            try:
+                sys.stdout.write("\033[3J\033[H\033[2J")
+                sys.stdout.flush()
+            except:
+                pass
+            os._exit(1)
+
+print("=" * 70)
+print("  CustomPathGenerator-Passphrase")
+print("  High-entropy path & password generator")
+print("=" * 70)
+print("[*] Checking offline status... (security measure)")
+
+if has_network():
+    print("\n" + "="*50)
+    print("[!] SECURITY LOCK: NETWORK DETECTED")
+    print("="*50)
+    print("This tool will NEVER run while online.")
+    print("This is NOT an error. This is protection.")
+    print("\nYour secrets are safe because we refused to run.")
+    print("\nTo continue:")
+    print("  1. Turn ON Airplane Mode / Flight Mode")
+    print("  2. Turn OFF WiFi & Data / Unplug Ethernet")
+    print("  3. Restart the app/phone/system, or wait 2-3 minutes")
+    print("     (Android keeps old network routes for a while)")
+    print("="*50)
+    sys.exit(1)
+
+print("[OK] Offline verified. Vault is isolated.")
+print("[OK] Starting continuous network guard...")
+threading.Thread(target=network_guard, daemon=True).start()
+
+def _blocked(*a, **k):
+    raise RuntimeError("Network blocked by policy")
+
+socket.socket = _blocked
+socket.create_connection = _blocked
+socket.socketpair = _blocked
+
+print("[OK] Network stack disabled for this session.\n")
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
@@ -10,60 +103,59 @@ from custompath.security import (
     secure_cleanup
 )
 import hashlib
-import sys
-import os
 import shutil
 import subprocess
 
 def copy_to_clipboard(text):
     cmds = []
-
-    termux_bin = "/data/data/com.termux/files/usr/bin/termux-clipboard-set"
-    if os.path.exists(termux_bin):
-        cmds.append([termux_bin])
-
+    termux_candidates = [
+        "/data/data/com.termux/files/usr/bin/termux-clipboard-set",
+        "termux-clipboard-set",
+    ]
+    for t in termux_candidates:
+        if t == "termux-clipboard-set" or os.path.exists(t):
+            cmds.append([t])
     if shutil.which("xclip"):
         cmds.append(["xclip", "-selection", "clipboard"])
     if shutil.which("xsel"):
         cmds.append(["xsel", "--clipboard", "--input"])
-
     if shutil.which("pbcopy"):
         cmds.append(["pbcopy"])
-
     if os.name == "nt":
         cmds.append(["cmd", "/c", "clip"])
-
     for cmd in cmds:
         try:
-            subprocess.run(
-                cmd,
-                input=text.encode("utf-8"),
-                check=True,
-                capture_output=True,
-                timeout=3
-            )
+            subprocess.run(cmd, input=text.encode("utf-8"), check=True, capture_output=True, timeout=3)
             return True
         except Exception:
             continue
     return False
 
+def clear_terminal_after(seconds: int = 45):
+    def _clear():
+        time.sleep(seconds)
+        try:
+            sys.stdout.write("\033[3J\033[H\033[2J")
+            sys.stdout.flush()
+            print("Terminal cleared for security.")
+            print("You can now generate another one or restart the script.")
+            print("Type y for yes to generate another, or n for no.")
+        except Exception:
+            pass
+    t = threading.Thread(target=_clear, daemon=True)
+    t.start()
+
 def print_header():
-    print("=" * 70)
-    print("  CustomPathGenerator-Passphrase")
-    print("  High-entropy path & password generator")
-    print("  Advanced users only")
-    print("=" * 70)
-    print()
     print("WARNING: Use at your own risk. Always test recovery with a small amount.")
     print()
 
 def get_target_length():
     while True:
         try:
-            value = int(input("Path length (2000-2150): ").strip())
-            if 2000 <= value <= 2150:
+            value = int(input("Path length (2000-2100): ").strip())
+            if 2000 <= value <= 2100:
                 return value
-            print("Must be between 2000 and 2150.")
+            print("Must be between 2000 and 2100.")
         except ValueError:
             print("Enter a number.")
 
@@ -73,7 +165,6 @@ def get_advanced_salt():
     print("2. One personal salt")
     print("3. Salt chaining")
     choice = input("Choice (1/2/3): ").strip()
-
     if choice == "3":
         print("\nSalt chaining (3-5 layers recommended)")
         final_salt = ""
@@ -92,21 +183,18 @@ def get_advanced_salt():
             if layers == 0:
                 final_salt = current
             else:
-                # Fixed: no longer appends the last layer in cleartext
                 final_salt = hashlib.sha3_512((final_salt + current).encode()).hexdigest()
             layers += 1
             if input("Add another layer? (y/n): ").strip().lower() != "y":
                 break
         print(f"\nDone. {layers} layers used.")
         return final_salt
-
     if choice == "2":
         personal = input("Personal salt (at least 50 chars): ").strip()
         if len(personal) < 50:
             print("Too short, using pure random instead.")
             return ""
         return personal
-
     return ""
 
 def security_gate():
@@ -119,55 +207,50 @@ def security_gate():
         return False
     return True
 
-def generate_path():
+def generate_path(paranoid: bool = False):
     if not security_gate():
         return
-
     mode = input("Beginner or Advanced? (b/a): ").strip().lower()
     target_len = get_target_length()
     _, system_salt_hex = make_system_salt()
-
     if mode == "a":
         final_salt = get_advanced_salt()
     else:
         print("\nBeginner mode – pure random")
         final_salt = ""
-
     combined = final_salt + system_salt_hex if final_salt else system_salt_hex
     print("\nGenerating path...")
     result, levels = make_path(combined, target_len)
-
     print("\n" + "=" * 70)
     print("DERIVATION PATH")
     print("=" * 70)
     print(result)
     print(".")
-    print(".")
     print(f"Length: {len(result)} characters")
     print(f"Levels: {levels} (excluding the final /0/0)")
-
+    if paranoid:
+        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
     if copy_to_clipboard(result):
-        print("Path copied to clipboard.")
-        print("Clipboard will be cleared automatically in 90 seconds.")
-        clear_clipboard_after(90)
+        print("Path also copied to clipboard.")
+        print("Clipboard will be cleared automatically in 45 seconds.")
+        clear_clipboard_after(45)
     else:
-        print("Could not copy automatically – please copy it yourself.")
-
+        print("Could not copy to clipboard.")
+    print("⚠️  Terminal will be cleared in 45 seconds for security...")
+    clear_terminal_after(45)
     secure_cleanup(result)
 
-def generate_password():
+def generate_password(paranoid: bool = False):
     if not security_gate():
         return
-
     print("\nSelect service / limit:")
-    print("1. SafePal          (max 128 chars, full noise allowed where some emojis count as 3 charactes and more etc. so maximum enforced length must be lesser than 128)")
+    print("1. SafePal          (max 128 chars, full noise allowed)")
     print("2. Gmail            (max 100 chars, letters/digits/standard specials only)")
     print("3. Coursera          (max 71 chars)")
     print("4. GitHub / General (emojis & noise ok, longer)")
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
-
-    if choice == "1":  # SafePal (75 safe;1110 safe for Token pocket/airgapv)
+    if choice == "1":
         value = 1110
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
@@ -179,37 +262,28 @@ def generate_password():
                 continue
             max_len = int(raw)
             if not 75 <= max_len <= value:
-                print(f"Invalid! Must be between 75 and {value}. You entered {max_len}. '75 safe for SAFEPAL;1150 safe for TOKENPOCKET/AIRGAPV'.")
+                print(f"Invalid! Must be between 75 and {value}.")
                 continue
             break
-
-        print("\nSafePal options:")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
-
     elif choice == "2":
         max_len = 100
         print("\nGmail rules: no emoji, no invisible characters.")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=False, allow_invisible=False, allow_space=allow_space, standard_only=True)
-
     elif choice == "3":
         max_len = 71
-        print("\nCoursera options:")
         use_full = input("Use full noise (emoji + invisible)? (y/n): ").strip().lower() == "y"
+        allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         if use_full:
-            allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
             result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
         else:
-            allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
             result = make_password(max_len, allow_emoji=False, allow_invisible=False, allow_space=allow_space, standard_only=True)
-
     elif choice == "4":
         max_len = 200
-        print("\nGitHub / general (full noise allowed)")
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=allow_space)
-
     else:
         while True:
             try:
@@ -223,53 +297,52 @@ def generate_password():
         allow_invisible = input("Allow invisible characters? (y/n): ").strip().lower() == "y"
         allow_space = input("Allow spaces? (y/n): ").strip().lower() == "y"
         result = make_password(max_len, allow_emoji=allow_emoji, allow_invisible=allow_invisible, allow_space=allow_space)
-
     print("\n" + "=" * 70)
     print("GENERATED PASSWORD / PASSPHRASE")
     print("=" * 70)
     print(result)
     print(".")
     print(f"Length: {len(result)} characters")
-
+    if paranoid:
+        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
     if copy_to_clipboard(result):
-        print("Copied to clipboard.")
-        print("Clipboard will be cleared automatically in 90 seconds.")
-        clear_clipboard_after(90)
+        print("Password also copied to clipboard.")
+        print("Clipboard will be cleared automatically in 45 seconds.")
+        clear_clipboard_after(45)
     else:
-        print("Could not copy automatically – please copy it yourself.")
-
+        print("Could not copy to clipboard.")
+    print("⚠️  Terminal will be cleared in 45 seconds for security...")
+    clear_terminal_after(45)
     secure_cleanup(result)
 
 def main():
+    try:
+        sys.stdout.write("\033[3J\033[H\033[2J")
+        sys.stdout.flush()
+    except Exception:
+        pass
     print_header()
-
     default_name = _n()
-    encrypted_noise = input(
-        "Path to encrypted secret noise file (or press Enter to skip): "
-    ).strip() or default_name
-
+    encrypted_noise = input("Path to encrypted secret noise file (or press Enter to skip): ").strip() or default_name
     loaded = load_secret_noise(encrypted_noise)
     if loaded:
         print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")
     else:
         print("ℹ️  No secret noise pool loaded (file missing, wrong password, or skipped). Using original pools only.")
-
+    paranoid = input("Enable paranoid mode? (y/n): ").strip().lower() == "y"
     while True:
         print("What do you want to generate?")
         print("1. Long custom derivation path (for advanced wallets)")
         print("2. Password / passphrase for SafePal, Gmail, Coursera, GitHub, etc.")
         choice = input("Choice (1/2): ").strip()
-
         if choice == "1":
-            generate_path()
+            generate_path(paranoid=paranoid)
         else:
-            generate_password()
-
+            generate_password(paranoid=paranoid)
         print("\nChecklist:")
         print("  - Save the final result in a password manager")
         print("  - Never store it together with your seed phrase")
         print()
-
         if input("Generate another one? (y/n): ").strip().lower() != "y":
             print("\nStay safe.")
             break
