@@ -1,19 +1,23 @@
 # ============================================================
-# FILE: main.py   (NOVEMBER4 NETWORK HARDENED - Version 2 + TCP Fix)
+# FILE: main.py   (NOVEMBER4 NETWORK HARDENED - Version 2 + TCP Fix + Guard Blind Fix)
 # ============================================================
 #!/usr/bin/env python3
 
-# kill switch - VERSION 2 NETWORK HARDENED + REAL TCP CHECK
+# kill switch - VERSION 2 FIXED - Guard uses real socket
 import socket
 import sys
 import time
 import threading
 import os
 
+# SAVE REAL SOCKET BEFORE WE BLOCK IT - THIS IS THE FIX
+_REAL_SOCKET = socket.socket
+_REAL_INET = socket.AF_INET
+_REAL_INET6 = socket.AF_INET6
+_REAL_STREAM = socket.SOCK_STREAM
+
 def has_network():
-    # REAL internet test - TCP handshake, not just route check
-    # Old UDP method asked kernel "do you have a road?" -> Android keeps old road
-    # TCP method actually drives on it -> if Flight Mode ON, it FAILS = offline = safe
+    # REAL internet test - TCP handshake
     test_targets = [
         ("8.8.8.8", 53),
         ("1.1.1.1", 53),
@@ -24,27 +28,24 @@ def has_network():
         ("2001:4860:4860::8888", 53, 0, 0),
         ("2606:4700:4700::1111", 53, 0, 0),
     ]
-
     for ip, port in test_targets:
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s = _REAL_SOCKET(_REAL_INET, _REAL_STREAM)
             s.settimeout(1.5)
             s.connect((ip, port))
             s.close()
             return True
         except:
             pass
-
     for target in test_targets_v6:
         try:
-            s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            s = _REAL_SOCKET(_REAL_INET6, _REAL_STREAM)
             s.settimeout(1.5)
             s.connect(target)
             s.close()
             return True
         except:
             pass
-
     return False
 
 def network_guard():
@@ -52,6 +53,11 @@ def network_guard():
         time.sleep(3)
         if has_network():
             print("\n[!] NETWORK TURNED ON MID-EXECUTION - ABORTING!")
+            try:
+                sys.stdout.write("\033[3J\033[H\033[2J")
+                sys.stdout.flush()
+            except:
+                pass
             os._exit(1)
 
 print("=" * 70)
