@@ -3,6 +3,32 @@
 # ============================================================
 #!/usr/bin/env python3
 
+# kill switch CORRECT VERSION
+import sys, socket
+
+def has_network():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(1)
+        s.connect(("8.8.8.8", 53))
+        s.close()
+        return True
+    except OSError:
+        return False
+    except Exception:
+        return True
+
+if has_network():
+    print("\n[!] NETWORK DETECTED - ABORTING")
+    sys.exit(1)
+
+def _blocked(*a, **k):
+    raise RuntimeError("Network blocked by policy")
+
+socket.socket = _blocked
+socket.create_connection = _blocked
+socket.socketpair = _blocked
+
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
 from custompath.security import (
