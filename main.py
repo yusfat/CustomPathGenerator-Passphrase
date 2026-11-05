@@ -246,13 +246,14 @@ def generate_path(paranoid: bool = False):
     print(f"Length: {len(result)} characters")
     print(f"Levels: {levels} (excluding the final /0/0)")
     if paranoid:
-        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
-    if copy_to_clipboard(result):
-        print("Path also copied to clipboard.")
-        print("Clipboard will be cleared automatically in 45 seconds.")
-        clear_clipboard_after(45)
+        print("\n[Paranoid mode] Result printed only. Clipboard disabled.")
     else:
-        print("Could not copy to clipboard.")
+        if copy_to_clipboard(result):
+            print("Path also copied to clipboard.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy to clipboard.")
     print("⚠️  Terminal will be cleared in 45 seconds for security...")
     clear_terminal_after(45)
     secure_cleanup(result)
@@ -321,13 +322,14 @@ def generate_password(paranoid: bool = False):
     print(".")
     print(f"Length: {len(result)} characters")
     if paranoid:
-        print("\n[Paranoid mode] Result printed (clipboard is unreliable on Termux).")
-    if copy_to_clipboard(result):
-        print("Password also copied to clipboard.")
-        print("Clipboard will be cleared automatically in 45 seconds.")
-        clear_clipboard_after(45)
+        print("\n[Paranoid mode] Result printed only. Clipboard disabled.")
     else:
-        print("Could not copy to clipboard.")
+        if copy_to_clipboard(result):
+            print("Password also copied to clipboard.")
+            print("Clipboard will be cleared automatically in 45 seconds.")
+            clear_clipboard_after(45)
+        else:
+            print("Could not copy to clipboard.")
     print("⚠️  Terminal will be cleared in 45 seconds for security...")
     clear_terminal_after(45)
     secure_cleanup(result)
