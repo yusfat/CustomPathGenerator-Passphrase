@@ -19,8 +19,8 @@ def has_network():
         ("1.1.1.1", 80),
     ]
     test_targets_v6 = [
-        ("2001:4860:4860::8888", 53),
-        ("2606:4700:4700::1111", 53),
+        ("2001:4860:4860::8888", 53, 0, 0),
+        ("2606:4700:4700::1111", 53, 0, 0),
     ]
     for ip, port in test_targets:
         try:
@@ -31,11 +31,11 @@ def has_network():
             return True
         except:
             pass
-    for ip, port in test_targets_v6:
+    for target in test_targets_v6:
         try:
             s = _REAL_SOCKET(_REAL_INET6, _REAL_STREAM)
             s.settimeout(1.5)
-            s.connect((ip, port))
+            s.connect(target)
             s.close()
             return True
         except:
@@ -79,6 +79,10 @@ print("[OK] Offline verified. Vault is isolated.")
 print("[OK] Starting continuous network guard...")
 threading.Thread(target=network_guard, daemon=True).start()
 
+import ssl
+import urllib.request
+import http.client
+
 def _blocked(*args, **kwargs):
     raise RuntimeError("Network blocked by policy (offline enforcement)")
 
@@ -86,28 +90,16 @@ socket.socket = _blocked
 socket.create_connection = _blocked
 socket.socketpair = _blocked
 
-try:
-    import ssl
-    ssl.SSLContext = _blocked
-    ssl.create_default_context = _blocked
-    if hasattr(ssl, "_create_unverified_context"):
-        ssl._create_unverified_context = _blocked
-except ImportError:
-    pass
+ssl.SSLContext = _blocked
+ssl.create_default_context = _blocked
+if hasattr(ssl, "_create_unverified_context"):
+    ssl._create_unverified_context = _blocked
 
-try:
-    import urllib.request
-    urllib.request.urlopen = _blocked
-    urllib.request.Request = _blocked
-except ImportError:
-    pass
+urllib.request.urlopen = _blocked
+urllib.request.Request = _blocked
 
-try:
-    import http.client
-    http.client.HTTPConnection = _blocked
-    http.client.HTTPSConnection = _blocked
-except ImportError:
-    pass
+http.client.HTTPConnection = _blocked
+http.client.HTTPSConnection = _blocked
 
 def _audit_block_network(event, args):
     if event == "socket.connect":
@@ -115,12 +107,9 @@ def _audit_block_network(event, args):
         if getattr(sock, "family", None) != getattr(socket, "AF_UNIX", -1):
             raise RuntimeError("Network connection blocked by audit policy")
 
-try:
-    sys.addaudithook(_audit_block_network)
-except Exception:
-    pass
+sys.addaudithook(_audit_block_network)
 
-print("[OK] Hardened network stack disabled for this session.\n")
+print("[OK] Hardened network stack disabled for this session (name + audit).\n")
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
