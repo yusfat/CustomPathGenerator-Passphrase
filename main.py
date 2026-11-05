@@ -1,16 +1,16 @@
 # ============================================================
-# FILE: main.py   (NOVEMBER4 NETWORK HARDENED - Version 2 + TCP Fix + Guard Blind Fix)
+# FILE: main.py   (NOVEMBER4 NETWORK HARDENED + STRONGER BLOCK)
 # ============================================================
 #!/usr/bin/env python3
 
-# kill switch - VERSION 2 FIXED - Guard uses real socket
+# kill switch - VERSION 2 FIXED - Guard uses real socket + hardened block
 import socket
 import sys
 import time
 import threading
 import os
 
-# SAVE REAL SOCKET BEFORE WE BLOCK IT - THIS IS THE FIX
+# SAVE REAL SOCKET BEFORE WE BLOCK IT
 _REAL_SOCKET = socket.socket
 _REAL_INET = socket.AF_INET
 _REAL_INET6 = socket.AF_INET6
@@ -85,15 +85,52 @@ print("[OK] Offline verified. Vault is isolated.")
 print("[OK] Starting continuous network guard...")
 threading.Thread(target=network_guard, daemon=True).start()
 
-def _blocked(*a, **k):
-    raise RuntimeError("Network blocked by policy")
+# ============================================================
+# STRONGER NETWORK BLOCK (name replacement + higher modules + audit hook)
+# ============================================================
+def _blocked(*args, **kwargs):
+    raise RuntimeError("Network blocked by policy (offline enforcement)")
 
+# 1. Classic name replacement
 socket.socket = _blocked
 socket.create_connection = _blocked
 socket.socketpair = _blocked
 
-print("[OK] Network stack disabled for this session.\n")
+# 2. Higher-level entry points
+try:
+    import ssl
+    ssl.SSLContext = _blocked
+    ssl.create_default_context = _blocked
+    ssl._create_unverified_context = _blocked
+except ImportError:
+    pass
 
+try:
+    import urllib.request
+    urllib.request.urlopen = _blocked
+    urllib.request.Request = _blocked
+except ImportError:
+    pass
+
+try:
+    import http.client
+    http.client.HTTPConnection = _blocked
+    http.client.HTTPSConnection = _blocked
+except ImportError:
+    pass
+
+# 3. Audit hook (harder to circumvent)
+def _audit_block_network(event, args):
+    if event == "socket.connect":
+        sock = args[0]
+        if getattr(sock, "family", None) != getattr(socket, "AF_UNIX", -1):
+            raise RuntimeError("Network connection blocked by audit policy")
+
+sys.addaudithook(_audit_block_network)
+
+print("[OK] Hardened network stack disabled for this session (name + audit).\n")
+
+# ---- Rest of the original file ----
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
 from custompath.security import (
@@ -351,5 +388,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\nStopped. Stay safe.")
+        print("\nInterrupted.")
         sys.exit(0)
