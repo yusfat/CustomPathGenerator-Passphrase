@@ -1,3 +1,4 @@
+```markdown
 ### ⚠️ Security Model - Read This Before Using
 
 ## 🔐 Security & Non-Determinism (Important)
@@ -13,6 +14,7 @@ Even if you enter the exact same personal salt (Option 2) or the same salt-chain
   - Whether later levels are hardened
   - Exact length and placement of noise
   - Chance to insert noise inside large index numbers
+  - Session pools are freshly shuffled every generation
 
 ### What this means for you
 - You **cannot** regenerate a previous path by re-typing your personal salt.
@@ -32,6 +34,7 @@ Even if you enter the exact same personal salt (Option 2) or the same salt-chain
 Always save the **final printed path** (and any separate passphrase) immediately in a secure password manager. Never rely on being able to regenerate it.
 
 ---
+
 ### Refer to the README.md as well ...
 
 ---
@@ -83,3 +86,21 @@ This tool is for **Defense in Depth**: Assume breach. Your 12 words are found. T
 **DO NOT use the beef test phrase from preview on mainnet. Verify recovery on a clean device before funding.**
 
 > Assume breach. Verify recovery. Never trust a single factor.
+
+---
+
+## Current Runtime Protections (Updated)
+
+### Network Isolation
+
+- Initial real TCP connectivity check (IPv4 + IPv6). Tool refuses to start if online.
+- Continuous background guard (every 3 seconds) using a preserved real socket. Aborts immediately if network appears.
+- Monkey-patch of `socket.socket`, `create_connection`, and `socketpair`.
+- Optional stronger hardening (ssl / urllib / http.client + audit hook) is available and recommended.
+
+### Verification
+
+Run the included test:
+
+```bash
+python3 test_network_isolation.py
