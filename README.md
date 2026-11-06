@@ -212,6 +212,7 @@ The October 2024 manual sample (noisy vs cleaned path → same address 0x5673170
     SECURITY.md
     
 ---
+
 ## Contributing
 
 Please include reproducible tests for code changes and exact wallet/version details for compatibility claims. Do not include real recovery phrases, private keys, passphrases, or funded-wallet data in issues or pull requests.
@@ -254,7 +255,6 @@ or, if you do not want to use a virtual environment:
     git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
     cd CustomPathGenerator-Passphrase
     python3 main.py
-
 
 A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
 
@@ -315,3 +315,23 @@ This software is provided **as-is**, without warranty. Digital asset loss can be
 - network guard: save _REAL_SOCKET before patch, continuous 3s guard aborts with os._exit(1) + screen clear
 - paranoia mode: 45s clipboard + 45s terminal clear, IPv4/IPv6 targets
 - secure_cleanup improved (screen wipe on reconnect)
+
+---
+
+## Current Security Status (November 2025)
+
+The project has received multiple layers of offline-enforcement and verification hardening.
+
+### Network Isolation (active)
+
+- **Initial offline check**: Real TCP handshake to public resolvers (8.8.8.8 / 1.1.1.1 on ports 53 & 80, plus IPv6). Refuses to start if any connectivity is detected.
+- **Continuous network guard**: Background thread that re-checks every 3 seconds using a saved real socket. Immediately aborts the process (`os._exit(1)`) and clears the terminal if network appears mid-execution.
+- **Monkey-patch**: Blocks `socket.socket`, `socket.create_connection`, and `socket.socketpair` after the guard is started.
+- **Hardening path available**: Stronger version with additional blocking of `ssl`, `urllib`, `http.client` + Python audit hook on `socket.connect` (recommended for higher paranoia).
+
+### Verification
+
+A dedicated test file is included:
+
+```bash
+python3 test_network_isolation.py
