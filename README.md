@@ -236,7 +236,7 @@ BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
 
 For STABLE SECURE VERSION:
 
-    git clone --branch v1.3-secure https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+    git clone --branch v1.4-stable-offline-hardened https://github.com/yusfat/CustomPathGenerator-Passphrase.git
     cd CustomPathGenerator-Passphrase
     python3 -m venv .venv
     source .venv/bin/activate
