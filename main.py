@@ -5,6 +5,10 @@ import sys
 import time
 import threading
 import os
+import random
+import ssl
+import urllib.request
+import http.client
 
 _REAL_SOCKET = socket.socket
 _REAL_INET = socket.AF_INET
@@ -12,45 +16,70 @@ _REAL_INET6 = socket.AF_INET6
 _REAL_STREAM = socket.SOCK_STREAM
 
 def has_network():
+    # More targets + randomized order – harder to selectively block
     test_targets = [
         ("8.8.8.8", 53),
         ("1.1.1.1", 53),
+        ("8.8.4.4", 53),
+        ("1.0.0.1", 53),
         ("8.8.8.8", 80),
         ("1.1.1.1", 80),
+        ("9.9.9.9", 53),
+        ("208.67.222.222", 53),
+        ("8.8.8.8", 443),
+        ("1.1.1.1", 443),
     ]
     test_targets_v6 = [
         ("2001:4860:4860::8888", 53, 0, 0),
         ("2606:4700:4700::1111", 53, 0, 0),
+        ("2001:4860:4860::8844", 53, 0, 0),
+        ("2606:4700:4700::1001", 53, 0, 0),
     ]
+
+    random.shuffle(test_targets)
+    random.shuffle(test_targets_v6)
+
     for ip, port in test_targets:
         try:
             s = _REAL_SOCKET(_REAL_INET, _REAL_STREAM)
-            s.settimeout(1.5)
+            s.settimeout(1.2)
             s.connect((ip, port))
             s.close()
             return True
-        except:
+        except Exception:
             pass
+
     for target in test_targets_v6:
         try:
             s = _REAL_SOCKET(_REAL_INET6, _REAL_STREAM)
-            s.settimeout(1.5)
+            s.settimeout(1.2)
             s.connect(target)
             s.close()
             return True
-        except:
+        except Exception:
             pass
+
+    # Extra: quick look at default routes / interfaces (best-effort)
+    try:
+        import subprocess
+        out = subprocess.check_output(["ip", "route"], stderr=subprocess.DEVNULL, timeout=1).decode()
+        if "default" in out and ("via" in out or "dev" in out):
+            # very rough signal – not definitive alone
+            pass
+    except Exception:
+        pass
+
     return False
 
 def network_guard():
     while True:
-        time.sleep(3)
+        time.sleep(1.8)  # tighter than before
         if has_network():
             print("\n[!] NETWORK TURNED ON MID-EXECUTION - ABORTING!")
             try:
                 sys.stdout.write("\033[3J\033[H\033[2J")
                 sys.stdout.flush()
-            except:
+            except Exception:
                 pass
             os._exit(1)
 
@@ -70,8 +99,7 @@ if has_network():
     print("\nTo continue:")
     print("  1. Turn ON Airplane Mode / Flight Mode")
     print("  2. Turn OFF WiFi & Data / Unplug Ethernet")
-    print("  3. Restart the app/phone/system, or wait 2-3 minutes")
-    print("     (Android keeps old network routes for a while)")
+    print("  3. Restart the app/phone/system, or wait a bit")
     print("="*50)
     sys.exit(1)
 
@@ -79,16 +107,17 @@ print("[OK] Offline verified. Vault is isolated.")
 print("[OK] Starting continuous network guard...")
 threading.Thread(target=network_guard, daemon=True).start()
 
-import ssl
-import urllib.request
-import http.client
-
 def _blocked(*args, **kwargs):
     raise RuntimeError("Network blocked by policy (offline enforcement)")
 
+# Broad monkey-patch
 socket.socket = _blocked
 socket.create_connection = _blocked
-socket.socketpair = _blocked
+if hasattr(socket, "socketpair"):
+    socket.socketpair = _blocked
+if hasattr(socket, "create_server"):
+    socket.create_server = _blocked
+socket.getaddrinfo = _blocked
 
 ssl.SSLContext = _blocked
 ssl.create_default_context = _blocked
@@ -102,14 +131,14 @@ http.client.HTTPConnection = _blocked
 http.client.HTTPSConnection = _blocked
 
 def _audit_block_network(event, args):
-    if event == "socket.connect":
-        sock = args[0]
+    if event in ("socket.connect", "socket.getaddrinfo", "socket.bind"):
+        sock = args[0] if args else None
         if getattr(sock, "family", None) != getattr(socket, "AF_UNIX", -1):
             raise RuntimeError("Network connection blocked by audit policy")
 
 sys.addaudithook(_audit_block_network)
 
-print("[OK] Hardened network stack disabled for this session (name + audit).\n")
+print("[OK] Hardened network stack disabled for this session.\n")
 
 from custompath.crypto import make_system_salt, make_random_salt, make_password, load_secret_noise, _n
 from custompath.generator import make_path
@@ -156,7 +185,6 @@ def clear_terminal_after(seconds: int = 45):
             sys.stdout.flush()
             print("Terminal cleared for security.")
             print("You can now generate another one or restart the script.")
-            print("Type y for yes to generate another, or n for no.")
         except Exception:
             pass
     t = threading.Thread(target=_clear, daemon=True)
@@ -164,6 +192,7 @@ def clear_terminal_after(seconds: int = 45):
 
 def print_header():
     print("WARNING: Use at your own risk. Always test recovery with a small amount.")
+    print("Memory wiping is best-effort only – Python cannot fully erase strings.")
     print()
 
 def get_target_length():
@@ -214,18 +243,18 @@ def get_advanced_salt():
         return personal
     return ""
 
-def security_gate():
+def security_gate(paranoid: bool = False):
     if is_debugger_present():
         print("Debugger detected. Refusing to generate secrets.")
         return False
-    if is_terminal_recorder_present():
-        print("Terminal recorder or screen-capture tool detected.")
+    if is_terminal_recorder_present(strict=paranoid):
+        print("Terminal recorder / screen-capture tool detected (or check failed in strict mode).")
         print("Refusing to generate secrets for safety.")
         return False
     return True
 
 def generate_path(paranoid: bool = False):
-    if not security_gate():
+    if not security_gate(paranoid=paranoid):
         return
     mode = input("Beginner or Advanced? (b/a): ").strip().lower()
     target_len = get_target_length()
@@ -259,7 +288,7 @@ def generate_path(paranoid: bool = False):
     secure_cleanup(result)
 
 def generate_password(paranoid: bool = False):
-    if not security_gate():
+    if not security_gate(paranoid=paranoid):
         return
     print("\nSelect service / limit:")
     print("1. SafePal          (max 128 chars, full noise allowed)")
@@ -269,7 +298,7 @@ def generate_password(paranoid: bool = False):
     print("5. Custom length")
     choice = input("Choice (1-5): ").strip()
     if choice == "1":
-        value = 1110
+        value = 128
         while True:
             raw = input(f"Enter length [{75}-{value}] [default 75]: ").strip()
             if raw == "":
@@ -347,8 +376,8 @@ def main():
     if loaded:
         print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")
     else:
-        print("ℹ️  No secret noise pool loaded (file missing, wrong password, or skipped). Using original pools only.")
-    paranoid = input("Enable paranoid mode? (y/n): ").strip().lower() == "y"
+        print("ℹ️  No secret noise pool loaded (file missing, wrong password, bad HMAC, or skipped). Using original pools only.")
+    paranoid = input("Enable paranoid mode? (y/n) [recommended]: ").strip().lower() == "y"
     while True:
         print("What do you want to generate?")
         print("1. Long custom derivation path (for advanced wallets)")
