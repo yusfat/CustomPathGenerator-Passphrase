@@ -13,7 +13,6 @@ import ctypes
 from typing import Any
 
 def is_debugger_present() -> bool:
-    # Basic Python-level
     if sys.gettrace() is not None:
         return True
 
@@ -22,7 +21,6 @@ def is_debugger_present() -> bool:
             kernel32 = ctypes.windll.kernel32
             if kernel32.IsDebuggerPresent():
                 return True
-            # Extra: CheckRemoteDebuggerPresent
             is_debugged = ctypes.c_int(0)
             kernel32.CheckRemoteDebuggerPresent(
                 kernel32.GetCurrentProcess(), ctypes.byref(is_debugged)
@@ -37,13 +35,9 @@ def is_debugger_present() -> bool:
                         if line.startswith("TracerPid:"):
                             if int(line.split()[1]) != 0:
                                 return True
-                        if line.startswith("Seccomp:"):
-                            # just informational, not a hard stop
-                            pass
             except Exception:
                 pass
 
-            # Extra cheap check
             try:
                 with open("/proc/self/wchan", "r") as f:
                     if "ptrace" in f.read().lower():
@@ -54,8 +48,7 @@ def is_debugger_present() -> bool:
         elif sys.platform == "darwin":
             try:
                 libc = ctypes.CDLL(None)
-                # PT_DENY_ATTACH style check
-                if libc.ptrace(31, 0, 0, 0) == -1:  # PT_DENY_ATTACH = 31
+                if libc.ptrace(31, 0, 0, 0) == -1:
                     return True
             except Exception:
                 pass
@@ -78,13 +71,13 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
         "import", "scrot", "maim", "byzanz", "vnc",
         "x11vnc", "wayvnc", "wf-recorder", "kooha",
         "screenrec", "bandicam", "fraps", "nvidia share",
-        "discord", "zoom", "teams",  # common screen-share
+        "discord", "zoom", "teams",
         "wireshark", "tcpdump", "tshark",
     }
 
     found = False
 
-    # ---- Preferred path: psutil ----
+    # Preferred path: psutil
     try:
         import psutil
         for proc in psutil.process_iter(["name", "cmdline", "exe", "ppid"]):
@@ -100,7 +93,6 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
                 if found:
                     break
 
-                # also glance at parent
                 try:
                     parent = psutil.Process(proc.info.get("ppid") or 0)
                     pname = (parent.name() or "").lower()
@@ -118,12 +110,11 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
             return True
 
     except ImportError:
-        # fall through to pure Python fallback
         pass
     except Exception:
         pass
 
-    # ---- Linux fallback without psutil ----
+    # Linux fallback without psutil
     if sys.platform.startswith("linux"):
         try:
             for pid in os.listdir("/proc"):
@@ -148,7 +139,6 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
             pass
 
     if strict and not found:
-        # Could not reliably check – in strict mode treat as suspicious
         return True
 
     return found
@@ -185,12 +175,10 @@ def clear_terminal_scrollback() -> None:
 def secure_cleanup(*secrets: Any) -> None:
     """
     Best-effort only. Python strings cannot be reliably wiped.
-    We still try harder than before.
     """
     for s in secrets:
         if isinstance(s, str) and s:
             try:
-                # try to overwrite the buffer a few times
                 buf = (ctypes.c_char * len(s)).from_address(
                     id(s) + sys.getsizeof("") - 1
                 )
@@ -200,7 +188,6 @@ def secure_cleanup(*secrets: Any) -> None:
                     ctypes.memset(buf, 0x00, len(s))
             except Exception:
                 pass
-            # also replace local reference
             s = "\0" * len(s)
 
         elif isinstance(s, bytearray):
