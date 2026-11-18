@@ -1,5 +1,6 @@
 # ============================================================
 # FILE: custompath/crypto.py
+# Fixed secret-noise loading – no more silent weak path
 # ============================================================
 
 import secrets
@@ -72,6 +73,11 @@ def _v(password: str, salt: bytes) -> bytes:
     )
 
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
+    """
+    Strict version:
+    - Always requires a valid .hmac when possible
+    - No more silent "decrypt any file without integrity check"
+    """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
     FLAT_SECRET = tuple()
@@ -82,29 +88,6 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not path.is_file():
         return []
 
-    if path.name != expected:
-        if password is None:
-            try:
-                password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
-            except Exception:
-                return []
-        if not password:
-            return []
-        try:
-            result = subprocess.run(
-                ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
-                 "-in", str(path), "-pass", "stdin"],
-                input=(password + "\n").encode(),
-                capture_output=True, check=True, timeout=30,
-            )
-            content = result.stdout.decode("utf-8", errors="ignore")
-            chars = list(content)
-            SECRET_NOISE_POOL = list(dict.fromkeys(chars))
-            FLAT_SECRET = tuple(SECRET_NOISE_POOL)
-            return SECRET_NOISE_POOL
-        except Exception:
-            return []
-
     if password is None:
         try:
             password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
@@ -113,6 +96,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not password:
         return []
 
+    # Decrypt first
     try:
         result = subprocess.run(
             ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
@@ -121,13 +105,19 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
             capture_output=True, check=True, timeout=30,
         )
         content = result.stdout.decode("utf-8", errors="ignore")
+    except Exception:
+        return []
 
-        hmac_path = path.with_suffix(".hmac")
-        if not hmac_path.is_file():
-            return []
+    # Integrity check – required
+    hmac_path = path.with_suffix(".hmac")
+    if not hmac_path.is_file():
+        print("[!] No .hmac file found – refusing to load unverified secret noise.")
+        return []
 
+    try:
         data = hmac_path.read_bytes()
         if len(data) < 16 + 32:
+            print("[!] HMAC file too short – refusing.")
             return []
 
         salt = data[:16]
@@ -137,6 +127,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
         actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
 
         if not hmac.compare_digest(actual_mac, expected_mac):
+            print("[!] HMAC verification failed – wrong password or tampered file.")
             return []
 
         chars = list(content)
@@ -168,7 +159,6 @@ def make_random_salt(min_len=60, max_len=180, pool=None):
     return ''.join(secrets.choice(pool) for _ in range(length))
 
 def make_session_pools():
-    """Create fresh non-deterministic session pools from the public lists (once per generation)."""
     def _shuf(seq):
         lst = list(seq)
         secrets.SystemRandom().shuffle(lst)
@@ -187,7 +177,6 @@ def make_session_pools():
     }
 
 def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
-    """Fast non-deterministic noise selection."""
     if session_pools is None:
         session_pools = make_session_pools()
 
