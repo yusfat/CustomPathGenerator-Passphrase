@@ -10,6 +10,21 @@ import ssl
 import urllib.request
 import http.client
 
+# ------------------------------------------------------------
+# Early integrity gate – refuse to run if critical files changed
+# Added additive only, does not weaken existing controls
+# ------------------------------------------------------------
+try:
+    from custompath.integrity import security_integrity_check
+    security_integrity_check(abort_on_fail=True)
+except ImportError:
+    print("[!] integrity module missing – refusing to run for safety.")
+    sys.exit(1)
+except Exception as e:
+    print(f"[!] Integrity check failed unexpectedly: {e}")
+    sys.exit(1)
+# ------------------------------------------------------------
+
 _REAL_SOCKET = socket.socket
 _REAL_INET = socket.AF_INET
 _REAL_INET6 = socket.AF_INET6
