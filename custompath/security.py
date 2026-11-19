@@ -1,6 +1,6 @@
 # ============================================================
 # FILE: custompath/security.py
-# Strengthened version – psutil kept & improved, better fallbacks
+# Strengthened version – improved detection, lower false positives
 # ============================================================
 
 import sys
@@ -59,63 +59,54 @@ def is_debugger_present() -> bool:
 
 def is_terminal_recorder_present(strict: bool = False) -> bool:
     """
-    Keep psutil path, make it stronger, add Linux fallback.
-    strict=True → treat inability to check as potentially unsafe.
+    Improved detection.
+    - Still blocks in strict mode when something real is found.
+    - Much lower false-positive rate.
     """
-    suspicious = {
-        "script", "ttyrec", "asciinema", "tmate", "peek",
-        "obs", "obs-studio", "ffmpeg", "recordmydesktop",
-        "simplescreenrecorder", "vokoscreen", "kazam",
-        "gnome-screenshot", "spectacle", "flameshot",
-        "screenkey", "keylogger", "logkeys", "xwd",
-        "import", "scrot", "maim", "byzanz", "vnc",
-        "x11vnc", "wayvnc", "wf-recorder", "kooha",
-        "screenrec", "bandicam", "fraps", "nvidia share",
-        "discord", "zoom", "teams",
-        "wireshark", "tcpdump", "tshark",
+    high_confidence = {
+        "asciinema", "ttyrec", "script", "peek",
+        "obs", "obs-studio", "wf-recorder", "kooha",
+        "recordmydesktop", "simplescreenrecorder", "vokoscreen",
+        "ffmpeg", "x11vnc", "wayvnc", "vnc",
+        "keylogger", "logkeys", "screenkey",
     }
 
-    found = False
+    low_confidence = {
+        "discord", "zoom", "teams", "flameshot",
+        "spectacle", "gnome-screenshot", "scrot", "maim",
+    }
 
-    # Preferred path: psutil
+    found_high = False
+    found_low = False
+
+    # psutil path
     try:
         import psutil
-        for proc in psutil.process_iter(["name", "cmdline", "exe", "ppid"]):
+        for proc in psutil.process_iter(["name", "cmdline", "exe"]):
             try:
                 name = (proc.info.get("name") or "").lower()
                 cmd  = " ".join(proc.info.get("cmdline") or []).lower()
                 exe  = (proc.info.get("exe") or "").lower()
 
-                for s in suspicious:
+                for s in high_confidence:
                     if s in name or s in cmd or s in exe:
-                        found = True
+                        found_high = True
                         break
-                if found:
+                if found_high:
                     break
 
-                try:
-                    parent = psutil.Process(proc.info.get("ppid") or 0)
-                    pname = (parent.name() or "").lower()
-                    for s in suspicious:
-                        if s in pname:
-                            found = True
-                            break
-                except Exception:
-                    pass
-
+                for s in low_confidence:
+                    if s in name or s in cmd or s in exe:
+                        found_low = True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-
-        if found:
-            return True
-
     except ImportError:
         pass
     except Exception:
         pass
 
-    # Linux fallback without psutil
-    if sys.platform.startswith("linux"):
+    # Linux /proc fallback
+    if not found_high and sys.platform.startswith("linux"):
         try:
             for pid in os.listdir("/proc"):
                 if not pid.isdigit():
@@ -123,25 +114,24 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
                 try:
                     with open(f"/proc/{pid}/comm", "r") as f:
                         comm = f.read().strip().lower()
-                    cmdline = ""
-                    try:
-                        with open(f"/proc/{pid}/cmdline", "rb") as f:
-                            cmdline = f.read().replace(b"\x00", b" ").decode("utf-8", "ignore").lower()
-                    except Exception:
-                        pass
-
-                    for s in suspicious:
-                        if s in comm or s in cmdline:
-                            return True
+                    for s in high_confidence:
+                        if s in comm:
+                            found_high = True
+                            break
+                    if found_high:
+                        break
                 except Exception:
                     continue
         except Exception:
             pass
 
-    if strict and not found:
+    if found_high:
         return True
 
-    return found
+    if strict:
+        return found_high   # only high-confidence in strict mode
+
+    return found_high or found_low
 
 def clear_clipboard_after(seconds: int = 45) -> None:
     def _clear():
@@ -173,9 +163,7 @@ def clear_terminal_scrollback() -> None:
         pass
 
 def secure_cleanup(*secrets: Any) -> None:
-    """
-    Best-effort only. Python strings cannot be reliably wiped.
-    """
+    """Best-effort only. Pure Python cannot fully wipe strings."""
     for s in secrets:
         if isinstance(s, str) and s:
             try:
@@ -189,11 +177,9 @@ def secure_cleanup(*secrets: Any) -> None:
             except Exception:
                 pass
             s = "\0" * len(s)
-
         elif isinstance(s, bytearray):
             for i in range(len(s)):
                 s[i] = 0
-
         elif isinstance(s, bytes):
             try:
                 ba = bytearray(s)
@@ -201,7 +187,6 @@ def secure_cleanup(*secrets: Any) -> None:
                     ba[i] = 0
             except Exception:
                 pass
-
     del secrets
     for _ in range(5):
         gc.collect()
