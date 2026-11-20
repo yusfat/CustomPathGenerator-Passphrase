@@ -129,7 +129,7 @@ def print_baseline(root: Path = None) -> None:
 
 
 EXPECTED_HASHES = {
-    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a302de648d69ed9657fa024",
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
