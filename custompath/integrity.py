@@ -128,7 +128,6 @@ def print_baseline(root: Path = None) -> None:
 
 
 
-# === INTEGRITY BASELINE (copy into EXPECTED_HASHES) ===
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a302de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
