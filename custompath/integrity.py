@@ -7,6 +7,8 @@
 import hashlib
 import os
 import sys
+import secrets
+import string
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -19,25 +21,21 @@ CRITICAL_FILES = [
     "custompath/generator.py",
     "custompath/pools.py",
     "custompath/security.py",
-    "custompath/integrity.py",          # self-hash re-enabled (canonical)
+    "custompath/integrity.py",          # self-hash (canonical)
 ]
 
-# Optional: additional files I may want to protect later
 OPTIONAL_FILES = [
     # "custompath/some_other.py",
 ]
 
-# Never touch or import any .env* files
 FORBIDDEN_PATTERNS = (".env", ".env.example", ".env.local", ".env.production")
 
 
 def _project_root() -> Path:
-    """Return the repository root (parent of custompath/)."""
     return Path(__file__).resolve().parent.parent
 
 
 def _sha3_256_file(path: Path) -> str:
-    """Streaming SHA3-256 of a file."""
     h = hashlib.sha3_256()
     with path.open("rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -51,11 +49,7 @@ def _is_forbidden(path: Path) -> bool:
 
 
 def _canonical_integrity_bytes(path: Path) -> bytes:
-    """
-    Canonical representation of integrity.py itself.
-    Strips blank lines, comments, and the self-hash line
-    so the hash remains stable when only EXPECTED_HASHES changes.
-    """
+    """Canonical form of integrity.py (ignores blank lines, comments, and the self-hash line)."""
     text = path.read_text(encoding="utf-8", errors="ignore")
     lines = [
         ln.rstrip()
@@ -72,10 +66,6 @@ def _sha3_256_canonical(path: Path) -> str:
 
 
 def collect_hashes(root: Path = None) -> Dict[str, str]:
-    """
-    Compute current SHA3-256 hashes of all critical files.
-    integrity.py uses the canonical form.
-    """
     if root is None:
         root = _project_root()
 
@@ -100,10 +90,6 @@ def verify_integrity(
     root: Path = None,
     strict: bool = True,
 ) -> Tuple[bool, List[str]]:
-    """
-    Compare current hashes against expected baseline.
-    Returns (ok: bool, messages: list[str])
-    """
     if root is None:
         root = _project_root()
 
@@ -116,8 +102,7 @@ def verify_integrity(
                 messages.append(f"[FAIL] Missing critical file: {rel}")
             elif digest == "FORBIDDEN":
                 messages.append(f"[FAIL] Forbidden file pattern detected: {rel}")
-        ok = len(messages) == 0
-        return ok, messages
+        return len(messages) == 0, messages
 
     for rel, expected_digest in expected.items():
         current_digest = current.get(rel, "MISSING")
@@ -139,7 +124,6 @@ def verify_integrity(
 
 
 def print_baseline(root: Path = None) -> None:
-    """Helper to generate a fresh baseline."""
     hashes = collect_hashes(root)
     print("# === INTEGRITY BASELINE (copy into EXPECTED_HASHES) ===")
     print("EXPECTED_HASHES = {")
@@ -150,18 +134,30 @@ def print_baseline(root: Path = None) -> None:
 
 
 def _combined_fingerprint(hashes: Dict[str, str]) -> str:
-    """Create a short, human-friendly fingerprint of the entire baseline."""
     combined = "".join(hashes[k] for k in sorted(hashes) if hashes[k] not in ("MISSING", "FORBIDDEN"))
     full = hashlib.sha3_256(combined.encode("utf-8")).hexdigest()
-    # Format as easy-to-compare groups
     return f"{full[:4]}-{full[4:8]}-{full[8:12]}-{full[12:16]}"
 
 
+def _check_dangerous_startup_files() -> List[str]:
+    """Detect sitecustomize.py, usercustomize.py and .pth files that can run before main."""
+    dangers = []
+    for entry in sys.path:
+        p = Path(entry)
+        if not p.is_dir():
+            continue
+        for name in ("sitecustomize.py", "usercustomize.py"):
+            if (p / name).is_file():
+                dangers.append(str(p / name))
+        for pth in p.glob("*.pth"):
+            dangers.append(str(pth))
+    return dangers
+
+
 def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
-    """
-    Layer 4 – Clear signing (always required)
-    Layer 3 – Second-device fingerprint (shown by default, can be skipped)
-    """
+    # Random challenge instead of static "RUN"
+    challenge = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
+
     print("\n" + "=" * 60)
     print("[CLEAR SIGNING]")
     print("You are about to run CustomPathGenerator-Passphrase.")
@@ -171,13 +167,13 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
             print(f"  • {rel}")
     print()
     print("No network will be used for secret generation.")
-    print("Type  RUN  (exactly) to continue, or anything else to abort:")
+    print(f'Type the challenge word "{challenge}" (exactly) to continue:')
     answer = input("> ").strip()
-    if answer != "RUN":
-        print("[CLEAR SIGNING] Aborted by user.")
+    if answer != challenge:
+        print("[CLEAR SIGNING] Incorrect challenge – aborted.")
         return False
 
-    # Optional second-device check (shown by default)
+    # Second-device fingerprint (shown by default)
     fingerprint = _combined_fingerprint(hashes)
     print("\n" + "-" * 60)
     print("[OPTIONAL SECOND DEVICE CHECK]")
@@ -187,7 +183,7 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     print("Press Enter to skip, or type YES if it matches:")
     ans2 = input("> ").strip().upper()
     if ans2 and ans2 != "YES":
-        print("[SECOND DEVICE] Mismatch or unexpected input – aborting.")
+        print("[SECOND DEVICE] Unexpected input – aborting.")
         return False
     if ans2 == "YES":
         print("[SECOND DEVICE] Confirmed by user.")
@@ -199,22 +195,36 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 
 
 # === INTEGRITY BASELINE ===
+# NOTE: After pasting this file you MUST update the integrity.py hash below
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "9c8927fe38d7ad1913f64aa56b8b4cdfedb7c26035d4d1574dc5d4c656877e73",
+    "custompath/integrity.py": "9c8927fe38d7ad1913f64aa56b8b4cdfedb7c26035d4d1574dc5d4c656877e73",  # will change
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
 
+
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
-    """
-    Convenience entry point for main.py.
-    Performs hash verification + clear-signing + optional second-device check.
-    """
+    # 1. Detect dangerous startup files first
+    dangers = _check_dangerous_startup_files()
+    if dangers:
+        print("\n" + "=" * 60)
+        print("[!] DANGEROUS STARTUP FILES DETECTED")
+        print("=" * 60)
+        for d in dangers:
+            print(f"  • {d}")
+        print("These files can execute code before integrity checks.")
+        print("Remove them or run in a clean environment.")
+        print("=" * 60)
+        if abort_on_fail:
+            sys.exit(1)
+        return False
+
+    # 2. Normal hash verification
     ok, messages = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
 
     if not ok:
@@ -231,7 +241,7 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
-    # Hash check passed → now do clear-signing + second device
+    # 3. Clear-signing + second-device check
     current_hashes = collect_hashes()
     if not clear_signing_and_second_device(current_hashes):
         if abort_on_fail:
