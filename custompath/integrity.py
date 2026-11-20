@@ -19,8 +19,9 @@ CRITICAL_FILES = [
     "custompath/generator.py",
     "custompath/pools.py",
     "custompath/security.py",
-    "custompath/integrity.py",          # self-hash re-enabled
+    "custompath/integrity.py",          # self-hash re-enabled (canonical)
 ]
+
 # Optional: additional files I may want to protect later
 OPTIONAL_FILES = [
     # "custompath/some_other.py",
@@ -50,17 +51,30 @@ def _is_forbidden(path: Path) -> bool:
 
 
 def _canonical_integrity_bytes(path: Path) -> bytes:
+    """
+    Canonical representation of integrity.py itself.
+    Strips blank lines, comments, and the self-hash line
+    so the hash remains stable when only EXPECTED_HASHES changes.
+    """
     text = path.read_text(encoding="utf-8", errors="ignore")
-    lines = [ln.rstrip() for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#") and '"custompath/integrity.py"' not in ln]
+    lines = [
+        ln.rstrip()
+        for ln in text.splitlines()
+        if ln.strip()
+        and not ln.lstrip().startswith("#")
+        and '"custompath/integrity.py"' not in ln
+    ]
     return "\n".join(lines).encode("utf-8") + b"\n"
+
 
 def _sha3_256_canonical(path: Path) -> str:
     return hashlib.sha3_256(_canonical_integrity_bytes(path)).hexdigest()
 
+
 def collect_hashes(root: Path = None) -> Dict[str, str]:
     """
     Compute current SHA3-256 hashes of all critical files.
-    Returns dict: relative_path -> hexdigest
+    integrity.py uses the canonical form.
     """
     if root is None:
         root = _project_root()
@@ -97,7 +111,6 @@ def verify_integrity(
     messages = []
 
     if expected is None or len(expected) == 0:
-        # No baseline → only check existence + forbidden patterns
         for rel, digest in current.items():
             if digest == "MISSING":
                 messages.append(f"[FAIL] Missing critical file: {rel}")
@@ -106,7 +119,6 @@ def verify_integrity(
         ok = len(messages) == 0
         return ok, messages
 
-    # Full comparison against provided baseline
     for rel, expected_digest in expected.items():
         current_digest = current.get(rel, "MISSING")
         if current_digest == "MISSING":
@@ -118,7 +130,6 @@ def verify_integrity(
             messages.append(f"       expected {expected_digest[:16]}…")
             messages.append(f"       got      {current_digest[:16]}…")
 
-    # Detect unexpected extra critical files
     for rel in current:
         if rel not in expected and current[rel] not in ("MISSING", "FORBIDDEN"):
             messages.append(f"[WARN] Unexpected file in critical set: {rel}")
@@ -128,7 +139,7 @@ def verify_integrity(
 
 
 def print_baseline(root: Path = None) -> None:
-    """Helper to generate a fresh baseline (run once on a trusted machine)."""
+    """Helper to generate a fresh baseline."""
     hashes = collect_hashes(root)
     print("# === INTEGRITY BASELINE (copy into EXPECTED_HASHES) ===")
     print("EXPECTED_HASHES = {")
@@ -138,7 +149,56 @@ def print_baseline(root: Path = None) -> None:
     print("# =====================================================")
 
 
+def _combined_fingerprint(hashes: Dict[str, str]) -> str:
+    """Create a short, human-friendly fingerprint of the entire baseline."""
+    combined = "".join(hashes[k] for k in sorted(hashes) if hashes[k] not in ("MISSING", "FORBIDDEN"))
+    full = hashlib.sha3_256(combined.encode("utf-8")).hexdigest()
+    # Format as easy-to-compare groups
+    return f"{full[:4]}-{full[4:8]}-{full[8:12]}-{full[12:16]}"
 
+
+def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
+    """
+    Layer 4 – Clear signing (always required)
+    Layer 3 – Second-device fingerprint (shown by default, can be skipped)
+    """
+    print("\n" + "=" * 60)
+    print("[CLEAR SIGNING]")
+    print("You are about to run CustomPathGenerator-Passphrase.")
+    print("The following critical files have been verified:")
+    for rel in sorted(hashes):
+        if hashes[rel] not in ("MISSING", "FORBIDDEN"):
+            print(f"  • {rel}")
+    print()
+    print("No network will be used for secret generation.")
+    print("Type  RUN  (exactly) to continue, or anything else to abort:")
+    answer = input("> ").strip()
+    if answer != "RUN":
+        print("[CLEAR SIGNING] Aborted by user.")
+        return False
+
+    # Optional second-device check (shown by default)
+    fingerprint = _combined_fingerprint(hashes)
+    print("\n" + "-" * 60)
+    print("[OPTIONAL SECOND DEVICE CHECK]")
+    print(f"Fingerprint:  {fingerprint}")
+    print("Compare this value with the same fingerprint on your phone")
+    print("or second device (if you saved it previously).")
+    print("Press Enter to skip, or type YES if it matches:")
+    ans2 = input("> ").strip().upper()
+    if ans2 and ans2 != "YES":
+        print("[SECOND DEVICE] Mismatch or unexpected input – aborting.")
+        return False
+    if ans2 == "YES":
+        print("[SECOND DEVICE] Confirmed by user.")
+    else:
+        print("[SECOND DEVICE] Skipped.")
+
+    print("=" * 60)
+    return True
+
+
+# === INTEGRITY BASELINE ===
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
@@ -154,7 +214,7 @@ EXPECTED_HASHES = {
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     """
     Convenience entry point for main.py.
-    Returns True if integrity is OK.
+    Performs hash verification + clear-signing + optional second-device check.
     """
     ok, messages = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
 
@@ -172,8 +232,13 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
-    # Optional quiet success – uncomment if you want a message every run
-    # print("[OK] Integrity check passed.")
+    # Hash check passed → now do clear-signing + second device
+    current_hashes = collect_hashes()
+    if not clear_signing_and_second_device(current_hashes):
+        if abort_on_fail:
+            sys.exit(1)
+        return False
+
     return True
 
 
