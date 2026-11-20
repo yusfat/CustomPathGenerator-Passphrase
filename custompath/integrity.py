@@ -131,11 +131,11 @@ def print_baseline(root: Path = None) -> None:
 
 # === INTEGRITY BASELINE (copy into EXPECTED_HASHES) ===
 EXPECTED_HASHES = {
-    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a302de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "92fbf932ef2b3fec265e6070a1e1fbfd02c75af4e6328ff48fd0717b9793cef9",
+    "custompath/integrity.py": "c6727402d6ce7c58017b45f3b7f239888545a7a0b4ed81a01fcd449ac94e44a5",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
