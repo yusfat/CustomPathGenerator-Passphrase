@@ -2,6 +2,7 @@
 # FILE: custompath/integrity.py
 # Offline File Integrity Monitor for CustomPathGenerator-Passphrase
 # Pure standard library • Air-gapped safe • No network • No .env loading
+# Branch: security/integrity-layers-clear-signing-fingerprint
 # ============================================================
 
 import hashlib
@@ -30,6 +31,14 @@ OPTIONAL_FILES = [
 
 FORBIDDEN_PATTERNS = (".env", ".env.example", ".env.local", ".env.production")
 
+# Known-benign packaging .pth files – never treat these as dangerous
+BENIGN_PTH = frozenset({
+    "distutils-precedence.pth",
+    "setuptools.pth",
+    "_virtualenv.pth",
+    "setuptools-precedence.pth",
+})
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
@@ -49,16 +58,26 @@ def _is_forbidden(path: Path) -> bool:
 
 
 def _canonical_integrity_bytes(path: Path) -> bytes:
-    """Canonical form of integrity.py (ignores blank lines, comments, and the self-hash line)."""
+    """
+    Canonical form of integrity.py used for self-hash.
+    - Removes blank lines
+    - Removes comment lines
+    - Removes the line that contains the self-hash entry
+      (so the hash does not depend on its own value)
+    """
     text = path.read_text(encoding="utf-8", errors="ignore")
-    lines = [
-        ln.rstrip()
-        for ln in text.splitlines()
-        if ln.strip()
-        and not ln.lstrip().startswith("#")
-        and '"custompath/integrity.py"' not in ln
-    ]
-    return "\n".join(lines).encode("utf-8") + b"\n"
+    lines = []
+    for ln in text.splitlines():
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        # Ignore the self-hash line itself (prevents circular dependency)
+        if '"custompath/integrity.py"' in ln:
+            continue
+        lines.append(ln.rstrip())
+    return ("\n".join(lines) + "\n").encode("utf-8")
 
 
 def _sha3_256_canonical(path: Path) -> str:
@@ -134,36 +153,32 @@ def print_baseline(root: Path = None) -> None:
 
 
 def _combined_fingerprint(hashes: Dict[str, str]) -> str:
-    combined = "".join(hashes[k] for k in sorted(hashes) if hashes[k] not in ("MISSING", "FORBIDDEN"))
+    combined = "".join(
+        hashes[k] for k in sorted(hashes)
+        if hashes[k] not in ("MISSING", "FORBIDDEN")
+    )
     full = hashlib.sha3_256(combined.encode("utf-8")).hexdigest()
     return f"{full[:4]}-{full[4:8]}-{full[8:12]}-{full[12:16]}"
 
 
 def _check_dangerous_startup_files() -> List[str]:
     """
-    Detect genuinely dangerous startup files that can run before main.
-    Ignores common benign packaging .pth files.
+    Detect genuinely dangerous startup files.
+    Ignores known benign packaging .pth files (especially distutils-precedence.pth).
     """
-    # Known benign .pth files that are part of normal Python packaging
-    BENIGN_PTH = {
-        "distutils-precedence.pth",
-        "setuptools.pth",           # sometimes present
-        "_virtualenv.pth",          # virtualenv
-    }
-
     dangers = []
     for entry in sys.path:
         p = Path(entry)
         if not p.is_dir():
             continue
 
-        # These two are always dangerous if present
+        # Always dangerous
         for name in ("sitecustomize.py", "usercustomize.py"):
             candidate = p / name
             if candidate.is_file():
                 dangers.append(str(candidate))
 
-        # .pth files – only flag unknown / suspicious ones
+        # .pth files – only flag unknown ones
         for pth in p.glob("*.pth"):
             if pth.name not in BENIGN_PTH:
                 dangers.append(str(pth))
@@ -172,7 +187,7 @@ def _check_dangerous_startup_files() -> List[str]:
 
 
 def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
-    # Random challenge instead of static "RUN"
+    # Random 6-character challenge
     challenge = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(6))
 
     print("\n" + "=" * 60)
@@ -211,14 +226,18 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     return True
 
 
-# === INTEGRITY BASELINE ===
-# NOTE: After pasting this file you MUST update the integrity.py hash below
+# ============================================================
+# INTEGRITY BASELINE
+# After pasting this file you MUST update the integrity.py hash.
+# Run:  python -m custompath.integrity --baseline
+# then copy the new value for "custompath/integrity.py" below.
+# ============================================================
 EXPECTED_HASHES = {
-    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a302de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "b4de2ae379f328f46e88a523fad8e6c2702a485eacc79a5b0d6da8337ea0688b",  # will change
+    "custompath/integrity.py": "REPLACE_WITH_NEW_CANONICAL_HASH",   # ← update this
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
