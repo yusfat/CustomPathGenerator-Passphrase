@@ -204,12 +204,11 @@ EXPECTED_HASHES = {
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "f5420afc8438ac3b0925a9c29cf3d63ae1eece1171f078f8f65baae938f008de",
+    "custompath/integrity.py": "9c8927fe38d7ad1913f64aa56b8b4cdfedb7c26035d4d1574dc5d4c656877e73",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
-
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     """
