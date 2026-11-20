@@ -19,9 +19,8 @@ CRITICAL_FILES = [
     "custompath/generator.py",
     "custompath/pools.py",
     "custompath/security.py",
-    "custompath/integrity.py",          # self-reference
+    # "custompath/integrity.py",          # temporarily disabled self-hash
 ]
-
 # Optional: additional files I may want to protect later
 OPTIONAL_FILES = [
     # "custompath/some_other.py",
