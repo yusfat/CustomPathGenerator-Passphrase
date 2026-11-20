@@ -58,27 +58,26 @@ def _is_forbidden(path: Path) -> bool:
 
 
 def _canonical_integrity_bytes(path: Path) -> bytes:
-    """
-    Canonical form of integrity.py used for self-hash.
-    - Removes blank lines
-    - Removes comment lines
-    - Removes the line that contains the self-hash entry
-      (so the hash does not depend on its own value)
-    """
     text = path.read_text(encoding="utf-8", errors="ignore")
     lines = []
+    in_baseline = False
     for ln in text.splitlines():
         stripped = ln.strip()
+        if stripped.startswith("EXPECTED_HASHES"):
+            in_baseline = True
+            continue
+        if in_baseline:
+            if stripped == "}" or stripped.startswith("}"):
+                in_baseline = False
+            continue
         if not stripped:
             continue
         if stripped.startswith("#"):
             continue
-        # Ignore the self-hash line itself (prevents circular dependency)
         if '"custompath/integrity.py"' in ln:
             continue
         lines.append(ln.rstrip())
     return ("\n".join(lines) + "\n").encode("utf-8")
-
 
 def _sha3_256_canonical(path: Path) -> str:
     return hashlib.sha3_256(_canonical_integrity_bytes(path)).hexdigest()
