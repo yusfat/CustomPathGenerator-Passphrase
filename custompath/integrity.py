@@ -6,6 +6,7 @@
 
 import hashlib
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -29,11 +30,9 @@ OPTIONAL_FILES = [
 # Never touch or import any .env* files
 FORBIDDEN_PATTERNS = (".env", ".env.example", ".env.local", ".env.production")
 
-
 def _project_root() -> Path:
     """Return the repository root (parent of custompath/)."""
     return Path(__file__).resolve().parent.parent
-
 
 def _sha3_256_file(path: Path) -> str:
     """Streaming SHA3-256 of a file."""
@@ -43,11 +42,27 @@ def _sha3_256_file(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
+def _canonical_integrity_bytes(path: Path) -> bytes:
+    """
+    Canonical bytes for integrity.py itself.
+    Replaces its own EXPECTED_HASHES entry with 000...0
+    before hashing, so the self-hash has a stable fixed point.
+    """
+    data = path.read_bytes()
+    if path.name != "integrity.py":
+        return data
+    pattern = rb'"custompath/integrity\.py":\s*"[0-9a-fA-F]{64}"'
+    replacement = b'"custompath/integrity.py": "' + b"0" * 64 + b'"'
+    canonical, n = re.subn(pattern, replacement, data, count=1)
+    return canonical if n == 1 else data
+
+def _sha3_256_canonical(path: Path) -> str:
+    """SHA3-256 of canonical bytes - used only for integrity.py."""
+    return hashlib.sha3_256(_canonical_integrity_bytes(path)).hexdigest()
 
 def _is_forbidden(path: Path) -> bool:
     name = path.name.lower()
     return any(name.startswith(p) or name == p for p in FORBIDDEN_PATTERNS)
-
 
 def collect_hashes(root: Path = None) -> Dict[str, str]:
     """
@@ -66,9 +81,11 @@ def collect_hashes(root: Path = None) -> Dict[str, str]:
         if _is_forbidden(full):
             hashes[rel] = "FORBIDDEN"
             continue
-        hashes[rel] = _sha3_256_file(full)
+        if rel == "custompath/integrity.py":
+            hashes[rel] = _sha3_256_canonical(full)
+        else:
+            hashes[rel] = _sha3_256_file(full)
     return hashes
-
 
 def verify_integrity(
     expected: Dict[str, str] = None,
@@ -115,7 +132,6 @@ def verify_integrity(
     ok = not any(m.startswith("[FAIL]") for m in messages)
     return ok, messages
 
-
 def print_baseline(root: Path = None) -> None:
     """Helper to generate a fresh baseline (run once on a trusted machine)."""
     hashes = collect_hashes(root)
@@ -126,18 +142,16 @@ def print_baseline(root: Path = None) -> None:
     print("}")
     print("# =====================================================")
 
-
-
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "59889f2c32286b1a9076a3e05a45161ad4eeea7f4da32839089c488711d0211a",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
+    "custompath/integrity.py": "0000000000000000000000000000000000000000000000000000000000000000",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
-
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     """
@@ -163,7 +177,6 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
     # Optional quiet success – uncomment if you want a message every run
     # print("[OK] Integrity check passed.")
     return True
-
 
 if __name__ == "__main__":
     import argparse
