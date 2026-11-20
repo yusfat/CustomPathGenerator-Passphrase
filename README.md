@@ -335,3 +335,16 @@ A dedicated test file is included:
 
 ```bash
 python3 test_network_isolation.py
+
+## File Integrity Monitoring (new)
+
+This repository includes an offline SHA3-256 integrity check.
+
+- Critical source files are hashed at startup.
+- If any protected file has been modified, the tool refuses to generate secrets.
+- The expected hashes are published in `custompath/integrity.py` (`EXPECTED_HASHES`).
+- This protects users against accidental or malicious modification *after* they obtain a clean copy.
+
+To verify manually:
+```bash
+python -c "from custompath.integrity import security_integrity_check; security_integrity_check()"
