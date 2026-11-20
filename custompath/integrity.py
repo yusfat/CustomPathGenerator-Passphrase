@@ -140,17 +140,34 @@ def _combined_fingerprint(hashes: Dict[str, str]) -> str:
 
 
 def _check_dangerous_startup_files() -> List[str]:
-    """Detect sitecustomize.py, usercustomize.py and .pth files that can run before main."""
+    """
+    Detect genuinely dangerous startup files that can run before main.
+    Ignores common benign packaging .pth files.
+    """
+    # Known benign .pth files that are part of normal Python packaging
+    BENIGN_PTH = {
+        "distutils-precedence.pth",
+        "setuptools.pth",           # sometimes present
+        "_virtualenv.pth",          # virtualenv
+    }
+
     dangers = []
     for entry in sys.path:
         p = Path(entry)
         if not p.is_dir():
             continue
+
+        # These two are always dangerous if present
         for name in ("sitecustomize.py", "usercustomize.py"):
-            if (p / name).is_file():
-                dangers.append(str(p / name))
+            candidate = p / name
+            if candidate.is_file():
+                dangers.append(str(candidate))
+
+        # .pth files – only flag unknown / suspicious ones
         for pth in p.glob("*.pth"):
-            dangers.append(str(pth))
+            if pth.name not in BENIGN_PTH:
+                dangers.append(str(pth))
+
     return dangers
 
 
