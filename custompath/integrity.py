@@ -7,6 +7,7 @@
 
 import hashlib
 import os
+import re
 import sys
 import secrets
 import string
@@ -44,6 +45,15 @@ BENIGN_PTH = frozenset({
     "setuptools-precedence.pth",
 })
 
+# Strict match for the self-hash line in EXPECTED_HASHES.
+# Only a line that is exactly:
+#   "custompath/integrity.py": "<64 hex chars>",
+# with optional leading whitespace, trailing comma, and trailing comment
+# is skipped. Any code before or after it does NOT match, so it stays hashed.
+_SELF_HASH_LINE = re.compile(
+    r'^\s*"custompath/integrity\.py"\s*:\s*"[0-9a-fA-F]{64}"\s*,?\s*(#.*)?$'
+)
+
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
@@ -76,7 +86,7 @@ def _canonical_integrity_bytes(path: Path) -> bytes:
             continue
         if stripped.startswith("#"):
             continue
-        if '"custompath/integrity.py"' in ln:
+        if _SELF_HASH_LINE.match(ln):
             continue
         lines.append(ln.rstrip())
     return ("\n".join(lines) + "\n").encode("utf-8")
