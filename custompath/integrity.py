@@ -253,7 +253,7 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
-    "custompath/crypto.py": "d14b3629806e556778ef33f679c47eb5bdaf122daecc21bafdd245832639294c",
+    "custompath/crypto.py": "74569a9974ed39fec90fd187cc3847ea26c67fa455410239b935f4c6298f9b38",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
     "custompath/integrity.py": "ab9cb5e3e36bdd8bc8461b1db423898405b91c0751a96ee9a0c26e7720e8cd1d",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
