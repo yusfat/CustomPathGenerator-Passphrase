@@ -17,6 +17,9 @@ from typing import Dict, List, Tuple
 _RNG = random.SystemRandom()
 
 # Critical files that must not change without detection
+# NOTE: Secret noise pool files (.enc / .age / .hmac) are INTENTIONALLY NOT here.
+# They are user data, not source code. crypto.py loads them AFTER this check passes.
+# If you add them here, integrity will fail every time you re-encrypt.
 CRITICAL_FILES = [
     "main.py",
     "custompath/__init__.py",
@@ -62,6 +65,8 @@ def _canonical_integrity_bytes(path: Path) -> bytes:
     - Removes comment lines
     - Removes the line that contains the self-hash entry
       (so the hash does not depend on its own value)
+    This fixes the egg-and-chicken problem: integrity.py can
+    contain its own hash and still verify itself.
     """
     text = path.read_text(encoding="utf-8", errors="ignore")
     lines = []
@@ -249,13 +254,14 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 # After pasting this file you MUST update the integrity.py hash.
 # Run:  python -m custompath.integrity --baseline
 # then copy the new value for "custompath/integrity.py" below.
+# Canonical hash ignores its own line, so it stays stable.
 # ============================================================
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "74569a9974ed39fec90fd187cc3847ea26c67fa455410239b935f4c6298f9b38",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "ab9cb5e3e36bdd8bc8461b1db423898405b91c0751a96ee9a0c26e7720e8cd1d",
+    "custompath/integrity.py": "d1f2aff61856e866087781768264897c53a7bd0cd6824ad0376d0528d46d7e3a",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
@@ -278,6 +284,8 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
         return False
 
     # 2. Normal hash verification
+    # This runs BEFORE any secret is loaded. crypto.py is verified here,
+    # then main.py is allowed to call load_secret_noise() in crypto.py.
     ok, messages = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
 
     if not ok:
