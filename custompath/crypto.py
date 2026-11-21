@@ -1,6 +1,7 @@
 # ============================================================
 # FILE: custompath/crypto.py
-# Fixed secret-noise loading – no more silent weak path
+# Fixed secret-noise loading – primary openssl+hmac + optional age support
+# Pure standard library preferred • Air-gapped safe
 # ============================================================
 
 import secrets
@@ -9,6 +10,7 @@ import hmac
 import string
 import getpass
 import subprocess
+import shutil
 from pathlib import Path
 from .pools import *
 
@@ -72,11 +74,29 @@ def _v(password: str, salt: bytes) -> bytes:
         dklen=64
     )
 
+def _try_age_decrypt(path: Path, password: str) -> str | None:
+    """Optional age support. Returns decrypted text or None."""
+    age_bin = shutil.which("age") or shutil.which("rage")
+    if not age_bin:
+        return None
+    try:
+        # age can take passphrase via stdin when using -p
+        result = subprocess.run(
+            [age_bin, "-d", "-p", str(path)],
+            input=(password + "\n").encode(),
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            return result.stdout.decode("utf-8", errors="ignore")
+    except Exception:
+        pass
+    return None
+
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     """
-    Strict version:
-    - Always requires a valid .hmac when possible
-    - No more silent "decrypt any file without integrity check"
+    Primary path  : openssl AES-256-CBC + mandatory .hmac  (recommended)
+    Secondary path: .age / .age.txt via age/rage binary (optional, warns if no .hmac)
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -96,7 +116,10 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not password:
         return []
 
-    # Decrypt first
+    content = None
+    used_age = False
+
+    # ----- Primary: openssl -----
     try:
         result = subprocess.run(
             ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
@@ -106,39 +129,58 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
         )
         content = result.stdout.decode("utf-8", errors="ignore")
     except Exception:
+        content = None
+
+    # ----- Secondary: age/rage if openssl failed and file looks like age -----
+    if content is None and path.suffix.lower() in {".age", ".txt"} or path.name.endswith(".age.txt"):
+        content = _try_age_decrypt(path, password)
+        used_age = content is not None
+
+    if content is None:
+        print("[!] Decryption failed (openssl and age). Wrong password or unsupported format.")
         return []
 
-    # Integrity check – required
-    hmac_path = path.with_suffix(".hmac")
+    # ----- Integrity check -----
+    hmac_path = path.with_suffix(path.suffix + ".hmac") if path.suffix else path.with_suffix(".hmac")
+    # also try classic .hmac next to the file
     if not hmac_path.is_file():
-        print("[!] No .hmac file found – refusing to load unverified secret noise.")
-        return []
+        hmac_path = path.with_name(path.name + ".hmac")
+    if not hmac_path.is_file():
+        hmac_path = path.with_suffix(".hmac")
 
-    try:
-        data = hmac_path.read_bytes()
-        if len(data) < 16 + 32:
-            print("[!] HMAC file too short – refusing.")
+    if hmac_path.is_file():
+        try:
+            data = hmac_path.read_bytes()
+            if len(data) < 16 + 32:
+                print("[!] HMAC file too short – refusing.")
+                return []
+            salt = data[:16]
+            expected_mac = data[16:]
+            key = _v(password, salt)
+            actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
+            if not hmac.compare_digest(actual_mac, expected_mac):
+                print("[!] HMAC verification failed – wrong password or tampered file.")
+                return []
+        except Exception:
+            print("[!] HMAC check error – refusing.")
+            return []
+    else:
+        if used_age:
+            print("[!] No .hmac file found for age-encrypted noise.")
+            print("    Loading WITHOUT integrity verification (not recommended).")
+            confirm = input("Type YES to continue anyway: ").strip()
+            if confirm != "YES":
+                print("Aborted.")
+                return []
+        else:
+            print("[!] No .hmac file found – refusing to load unverified secret noise.")
             return []
 
-        salt = data[:16]
-        expected_mac = data[16:]
-
-        key = _v(password, salt)
-        actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
-
-        if not hmac.compare_digest(actual_mac, expected_mac):
-            print("[!] HMAC verification failed – wrong password or tampered file.")
-            return []
-
-        chars = list(content)
-        SECRET_NOISE_POOL = list(dict.fromkeys(chars))
-        FLAT_SECRET = tuple(SECRET_NOISE_POOL)
-        return SECRET_NOISE_POOL
-
-    except Exception:
-        SECRET_NOISE_POOL = []
-        FLAT_SECRET = tuple()
-        return []
+    chars = list(content)
+    SECRET_NOISE_POOL = list(dict.fromkeys(chars))
+    FLAT_SECRET = tuple(SECRET_NOISE_POOL)
+    print(f"[OK] Secret noise pool loaded ({len(SECRET_NOISE_POOL)} unique chars).")
+    return SECRET_NOISE_POOL
 
 def make_system_salt():
     salt = secrets.token_bytes(64)
