@@ -76,7 +76,7 @@ def _canonical_integrity_bytes(path: Path) -> bytes:
     - Removes the line that contains the self-hash entry
       (so the hash does not depend on its own value)
     This fixes the egg-and-chicken problem: integrity.py can
-    contain its own hash and still verify itself.
+    contain its own hash and still verify itself. THIS DECISION AND DESIGN IS INTENTIONALLY TO MAKE IT DIFFICULT FOR ATTACKERS TO MANIPULATE THESE SENSITIVE FILES
     """
     text = path.read_text(encoding="utf-8", errors="ignore")
     lines = []
@@ -180,23 +180,42 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     # Ask first - emoji is optional, default No
     use_emoji = input("Include one emoji in challenge? (y/N): ").strip().lower() == "y"
 
+    # Challenge is max 5 chars total, counting emoji as 1 and space as 1.
+    # Max 2 emojis, max 1 space, always 1 special.
+    # The rest is letters/digits. Mix is picked fresh every run.
+    if use_emoji:
+        n_emoji = secrets.choice([0, 1, 1, 2])
+    else:
+        n_emoji = 0
+    n_space = secrets.choice([0, 0, 1])
+    # Keep at least 2 letters/digits, so there is something to uppercase.
+    # If emoji + space would leave too little room, drop the space first.
+    while 5 - 1 - n_emoji - n_space < 2:
+        if n_space:
+            n_space = 0
+        else:
+            n_emoji -= 1
+    n_base = 5 - 1 - n_emoji - n_space
+
     # 1. Pick ONE special character, non-deterministically, per challenge
     # All are on any laptop keyboard, no Shift confusion except ! @ # etc.
     special = secrets.choice(list("-_!@#$%&*+=?"))
 
-    # 2. Base: 5 chars from lowercase + digits (special added separately below)
-    base = [secrets.choice(string.ascii_lowercase + string.digits) for _ in range(5)]
+    # 2. Base: letters/digits, length depends on emoji/space picked above
+    base = [secrets.choice(string.ascii_lowercase + string.digits) for _ in range(n_base)]
 
-    # 3. Non-deterministically make 2 or 3 of them UPPERCASE, at random positions
+    # 3. Non-deterministically make 1 or 2 of them UPPERCASE, at random positions
     while True:
         chars = base.copy()
-        n_upper = secrets.choice([2, 3])
-        positions = _RNG.sample(range(5), n_upper)
+        n_upper = secrets.choice([1, 2])
+        if n_upper > n_base:
+            n_upper = n_base
+        positions = _RNG.sample(range(n_base), n_upper)
         for pos in positions:
             if chars[pos].islower():
                 chars[pos] = chars[pos].upper()
         n_real = sum(1 for c in chars if c.isupper())
-        if 2 <= n_real <= 3:
+        if 1 <= n_real <= 2:
             break
 
     # 4. Insert the randomly chosen special once, at a random position
@@ -204,8 +223,8 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     chars.insert(pos, special)
     challenge = "".join(chars)
 
-    # 5. Non-deterministically add 1 OR 2 emojis, at random positions, no repetition
-    if use_emoji:
+    # 5. Non-deterministically add up to 2 emojis, at random positions, no repetition
+    if n_emoji:
         EMOJIS = [
             "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
             "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚",
@@ -218,11 +237,19 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
             "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🫡", "🫢",
             "🫣", "👍", "👎", "👏", "🙌", "🙏", "💪", "🔥", "⭐", "❤️",
         ]
-        n_emoji = secrets.choice([1, 2])
-        # sample = no repetition, picks 1 or 2 distinct emojis
+        # sample = no repetition, picks distinct emojis
         for emoji in _RNG.sample(EMOJIS, n_emoji):
             pos = secrets.randbelow(len(challenge) + 1)
             challenge = challenge[:pos] + emoji + challenge[pos:]
+
+    # 6. At most one space, never at start/end, or strip() would eat it
+    if n_space:
+        # challenge is a list of chars here, emoji counts as 1 char in Python
+        # only if it is one code point - most are, the few with variation
+        # selector are still typed as one emoji by the user, so keep it simple:
+        # insert in the middle only.
+        pos = secrets.randbelow(len(challenge) - 1) + 1
+        challenge = challenge[:pos] + " " + challenge[pos:]
 
     print("\n" + "=" * 60)
     print("[CLEAR SIGNING]")
@@ -234,9 +261,31 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     print()
     print("No network will be used for secret generation.")
     print(f'Type the challenge word "{challenge}" (exactly) to continue:')
-    answer = input("> ").strip()
-    if answer != challenge:
-        print("[CLEAR SIGNING] Incorrect challenge – aborted.")
+    # For convenience, you can copy and paste the challenge word above.
+    # No need to retype it by hand.
+    print("Tip: for convenience, you can copy and paste the challenge word above.")
+
+    # 2 attempts, then abort. Same challenge for both tries,
+    # so a typo does not force you to start over.
+    for attempt in (1, 2):
+        answer = input("> ").strip()
+        if answer == challenge:
+            break
+        if attempt == 1:
+            print()
+            print("[CLEAR SIGNING] That did not match. Please try again.")
+            print("You have 1 attempt remaining.")
+            print("This check is for your own protection — it confirms")
+            print("you are present and can see what is about to run.")
+            print(f'Type the challenge word "{challenge}" (exactly) to continue:')
+            print("Tip: for convenience, you can copy and paste the challenge word above.")
+            continue
+        print()
+        print("[CLEAR SIGNING] Challenge failed after 2 attempts — aborted.")
+        print("This is for your own security protection: the program")
+        print("will not continue without a correct confirmation,")
+        print("so that no one else can run it on your behalf.")
+        print("Please run the program again when you are ready.")
         return False
 
     # Second-device fingerprint (shown by default)
@@ -271,7 +320,7 @@ EXPECTED_HASHES = {
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "74569a9974ed39fec90fd187cc3847ea26c67fa455410239b935f4c6298f9b38",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "81cbe36637575939c73ace4e9b5706b1696218571f1667b958b0e36f02fc7d2d",
+    "custompath/integrity.py": "e601da21177d525a475533c8e84ab4b65284c7d6d3656aef4bc91c3c988e6709",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
