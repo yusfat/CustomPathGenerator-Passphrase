@@ -380,15 +380,15 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
-    "custompath/crypto.py": "ef7976da5251d11349d47a5ce816295080efbccdbf5c78b7eb1cd0be4d2c83f2",
-    "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",                                                                                    "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",
+    "custompath/crypto.py": "ab2338824332c8c119d3ab89fe5ddc8a20364dd233a576b264b5f714440e8149",
+    "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
+    "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
-    "main.py": "217d0ffc4068ea89b13825b94f6424ba83ea7244a191639fa026f7d3c61c5474",
-}
+    "main.py": "217d0ffc4068ea89b13825b94f6424ba83ea7244a191639fa026f7d3c61c5474",       }
 
 # Will be filled by --baseline. Placeholder until re-baseline.
-EXPECTED_CRITICAL_ROOT = "5dbd7e56aeb9d5b17b6c555aa9140438c274456e252bf2f4c0586fbf6d369702"
+EXPECTED_CRITICAL_ROOT = "d400c7bf705ba6b3345ad33489dbc6ce66e222dbac8f03547654b68ef283bfac"
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     # 1. Detect dangerous startup files first
