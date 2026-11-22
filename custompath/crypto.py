@@ -6,6 +6,8 @@
 # OpenSSL: -pbkdf2 only
 #   try -iter 2000000, then 4000000 (project high-tier),
 #   then -pbkdf2 alone (historical branch argv for existing files)
+# Termux: prefer Termux openssl + PREFIX/lib; absolute -in path
+# Decode: utf-8 with errors="ignore" (same as original working branch)
 # Never MD5 • never legacy non-pbkdf2 • never lower Python 2e6/4e6
 # ============================================================
 
@@ -62,9 +64,11 @@ FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))
 SECRET_NOISE_POOL = []
 FLAT_SECRET = tuple()
 
-# Project high-tier openssl PBKDF2 iters (match _v / make_system_salt).
-# Historical branch used -pbkdf2 with no -iter; that form is tried last only.
 _OPENSSL_PBKDF2_ITERS = (2_000_000, 4_000_000)
+
+_TERMUX_PREFIX = "/data/data/com.termux/files/usr"
+_TERMUX_OPENSSL = _TERMUX_PREFIX + "/bin/openssl"
+_TERMUX_LIB = _TERMUX_PREFIX + "/lib"
 
 
 def _t(s: bytes, k: int = 0x5A) -> bytes:
@@ -90,11 +94,12 @@ def _v(password: str, salt: bytes) -> bytes:
 
 
 def _find_openssl() -> str | None:
+    # Termux first (avoid a broken/non-Termux stub on /usr/bin)
     candidates = [
+        _TERMUX_OPENSSL,
         "/usr/bin/openssl",
         "/bin/openssl",
         "/usr/local/bin/openssl",
-        "/data/data/com.termux/files/usr/bin/openssl",  # Termux
     ]
     for c in candidates:
         if os.path.isfile(c) and os.access(c, os.X_OK):
@@ -108,17 +113,18 @@ def _find_age() -> str | None:
 
 def _clean_env() -> dict:
     path_parts = ["/usr/bin", "/bin", "/usr/local/bin"]
-    termux_bin = "/data/data/com.termux/files/usr/bin"
-    if os.path.isdir(termux_bin):
-        path_parts.append(termux_bin)
+    if os.path.isdir(_TERMUX_PREFIX + "/bin"):
+        path_parts.insert(0, _TERMUX_PREFIX + "/bin")
     env = {
         "PATH": ":".join(path_parts),
         "HOME": os.environ.get("HOME", ""),
-        "LANG": "C",
+        "LANG": os.environ.get("LANG") or "C.UTF-8",
     }
+    # Termux openssl often needs PREFIX/lib; pin only that path (not inherited attacker path)
+    if os.path.isdir(_TERMUX_LIB):
+        env["LD_LIBRARY_PATH"] = _TERMUX_LIB
     for bad in (
         "LD_PRELOAD",
-        "LD_LIBRARY_PATH",
         "DYLD_INSERT_LIBRARIES",
         "PYTHONPATH",
         "PYTHONHOME",
@@ -138,7 +144,6 @@ def _looks_like_openssl_salted(path: Path) -> bool:
 
 
 def _try_age_decrypt(path: Path, password: str) -> str | None:
-    """Optional age support. Returns decrypted text or None."""
     age_bin = _find_age()
     if not age_bin:
         return None
@@ -146,14 +151,15 @@ def _try_age_decrypt(path: Path, password: str) -> str | None:
         env = _clean_env()
         env["AGE_PASSPHRASE"] = password
         result = subprocess.run(
-            [age_bin, "--decrypt", str(path)],
+            [age_bin, "--decrypt", str(path.resolve())],
             capture_output=True,
             timeout=30,
             env=env,
         )
         env["AGE_PASSPHRASE"] = ""
         if result.returncode == 0:
-            return result.stdout.decode("utf-8", errors="strict")
+            # same decode policy as openssl path / original branch
+            return result.stdout.decode("utf-8", errors="ignore")
     except Exception:
         pass
     return None
@@ -163,10 +169,10 @@ def _try_openssl_decrypt(path: Path, password: str) -> str | None:
     """
     openssl enc decrypt.
 
-    Order (strongest first, additive):
-      1) -pbkdf2 -iter 2000000   (match _v)
-      2) -pbkdf2 -iter 4000000   (match make_system_salt)
-      3) -pbkdf2 only            (exact historical branch argv; existing files)
+    Order:
+      1) -pbkdf2 -iter 2000000
+      2) -pbkdf2 -iter 4000000
+      3) -pbkdf2 only (historical branch; matches verified manual decrypt)
 
     Never MD5. Never non-pbkdf2. Never lower Python-side 2e6/4e6.
     """
@@ -174,22 +180,24 @@ def _try_openssl_decrypt(path: Path, password: str) -> str | None:
     if not openssl_bin:
         return None
 
-    pass_bytes = (password + "\n").encode()
+    pass_bytes = (password + "\n").encode("utf-8")
     env = _clean_env()
+    in_path = str(path.resolve())
 
     recipes = [
         ["-aes-256-cbc", "-pbkdf2", "-iter", "2000000"],
         ["-aes-256-cbc", "-pbkdf2", "-iter", "4000000"],
-        ["-aes-256-cbc", "-pbkdf2"],  # historical branch decrypt line
+        ["-aes-256-cbc", "-pbkdf2"],
     ]
 
+    last_err = b""
     for extra in recipes:
         try:
             result = subprocess.run(
                 [
                     openssl_bin, "enc", "-d",
                     *extra,
-                    "-in", str(path),
+                    "-in", in_path,
                     "-pass", "stdin",
                 ],
                 input=pass_bytes,
@@ -198,11 +206,10 @@ def _try_openssl_decrypt(path: Path, password: str) -> str | None:
                 env=env,
             )
             if result.returncode != 0:
+                last_err = result.stderr or last_err
                 continue
-            try:
-                text = result.stdout.decode("utf-8", errors="strict")
-            except UnicodeDecodeError:
-                continue
+            # Original working branch used errors="ignore" (noise may be mixed bytes)
+            text = result.stdout.decode("utf-8", errors="ignore")
             if text == "":
                 continue
             return text
@@ -220,8 +227,6 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
       b) user skipped (Enter)
       c) wrong password / decrypt failure
       d) bad HMAC / missing HMAC (legacy YES only)
-
-    Prefers openssl when header is Salted__; else age then openssl.
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -262,13 +267,12 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if content is None:
         print("[!] Decryption failed (wrong password or openssl KDF mismatch).")
         print("    Tried: -pbkdf2 -iter 2000000, -iter 4000000, then -pbkdf2 (historical).")
-        print("    If this is an old file, confirm the password, or re-encrypt at project tier:")
-        print("      openssl enc -aes-256-cbc -salt -pbkdf2 -iter 2000000 \\")
-        print("        -in pool.txt -out SECRETNOISEPOOL.txt.age")
+        print("    Manual check (Termux-safe paths):")
+        print("      openssl enc -d -aes-256-cbc -pbkdf2 -in SECRETNOISEPOOL.txt.age -out ./noise_plain.txt")
+        print("    If manual works but the app does not, ensure this crypto.py is saved and re-run.")
         print("    Secret noise not loaded.")
         return []
 
-    # HMAC verification
     hmac_path = path.with_name(path.name + ".hmac")
     if not hmac_path.is_file():
         hmac_path = path.with_suffix(path.suffix + ".hmac")
@@ -324,7 +328,6 @@ def create_hmac_file(path_str: str, password: str, content: str) -> Path | None:
 
 def make_system_salt():
     salt = secrets.token_bytes(64)
-    # Existing work factor — do not reduce
     stretched = hashlib.pbkdf2_hmac(
         "sha3_512",
         salt,
