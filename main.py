@@ -10,21 +10,20 @@ import random
 import ssl
 import urllib.request
 import http.client
+import subprocess
+import hashlib
+import shutil
 
-# ------------------------------------------------------------
-# Early integrity gate – refuse to run if critical files changed
-# Added additive only, does not weaken existing controls
-# ------------------------------------------------------------
+# early check, if these files changed we don't run at all
 try:
     from custompath.integrity import security_integrity_check
     security_integrity_check(abort_on_fail=True)
 except ImportError:
-    print("[!] integrity module missing – refusing to run for safety.")
+    print("[!] integrity module missing - refusing to run for safety.")
     sys.exit(1)
 except Exception as e:
     print(f"[!] Integrity check failed unexpectedly: {e}")
     sys.exit(1)
-# ------------------------------------------------------------
 
 _REAL_SOCKET = socket.socket
 _REAL_INET = socket.AF_INET
@@ -32,7 +31,7 @@ _REAL_INET6 = socket.AF_INET6
 _REAL_STREAM = socket.SOCK_STREAM
 
 def has_network():
-    # More targets + randomized order – harder to selectively block
+    # only for startup, before we block sockets
     test_targets = [
         ("8.8.8.8", 53),
         ("1.1.1.1", 53),
@@ -75,22 +74,44 @@ def has_network():
         except Exception:
             pass
 
-    # Extra: quick look at default routes / interfaces (best-effort)
+    return False
+
+def _network_is_up_nosocket():
+    # used after we block sockets. no socket.connect here on purpose.
+    # before, guard called has_network() which uses socket.connect,
+    # and our own audit hook blocked it, so guard always saw False.
+    # that is why it stopped aborting mid-run.
     try:
-        import subprocess
-        out = subprocess.check_output(["ip", "route"], stderr=subprocess.DEVNULL, timeout=1).decode()
-        if "default" in out and ("via" in out or "dev" in out):
-            # very rough signal – not definitive alone
-            pass
+        out = subprocess.check_output(
+            ["ip", "route"], stderr=subprocess.DEVNULL, timeout=1
+        ).decode(errors="ignore")
+        if "default" in out:
+            for name in os.listdir("/sys/class/net"):
+                if name == "lo":
+                    continue
+                try:
+                    with open(f"/sys/class/net/{name}/operstate") as f:
+                        if f.read().strip() == "up":
+                            return True
+                except Exception:
+                    continue
     except Exception:
         pass
-
+    try:
+        with open("/proc/net/route") as f:
+            lines = f.read().splitlines()[1:]
+            for ln in lines:
+                parts = ln.split()
+                if len(parts) >= 2 and parts[1] != "00000000":
+                    return True
+    except Exception:
+        pass
     return False
 
 def network_guard():
     while True:
-        time.sleep(1.8)  # tighter than before
-        if has_network():
+        time.sleep(1.8)
+        if _network_is_up_nosocket():
             print("\n[!] NETWORK TURNED ON MID-EXECUTION - ABORTING!")
             try:
                 sys.stdout.write("\033[3J\033[H\033[2J")
@@ -126,7 +147,7 @@ threading.Thread(target=network_guard, daemon=True).start()
 def _blocked(*args, **kwargs):
     raise RuntimeError("Network blocked by policy (offline enforcement)")
 
-# Broad monkey-patch
+# block the usual ways out
 socket.socket = _blocked
 socket.create_connection = _blocked
 if hasattr(socket, "socketpair"):
@@ -164,9 +185,6 @@ from custompath.security import (
     clear_clipboard_after,
     secure_cleanup
 )
-import hashlib
-import shutil
-import subprocess
 
 def copy_to_clipboard(text):
     cmds = []
@@ -208,7 +226,7 @@ def clear_terminal_after(seconds: int = 45):
 
 def print_header():
     print("WARNING: Use at your own risk. Always test recovery with a small amount.")
-    print("Memory wiping is best-effort only – Python cannot fully erase strings.")
+    print("Memory wiping is best-effort only - Python cannot fully erase strings.")
     print()
 
 def get_target_length():
@@ -278,7 +296,7 @@ def generate_path(paranoid: bool = False):
     if mode == "a":
         final_salt = get_advanced_salt()
     else:
-        print("\nBeginner mode – pure random")
+        print("\nBeginner mode - pure random")
         final_salt = ""
     combined = final_salt + system_salt_hex if final_salt else system_salt_hex
     print("\nGenerating path...")
@@ -387,7 +405,11 @@ def main():
         pass
     print_header()
     default_name = _n()
-    encrypted_noise = input("Path to encrypted secret noise file (or press Enter to skip): ").strip() or default_name
+    try:
+        encrypted_noise = input("Path to encrypted secret noise file (or press Enter to skip): ").strip() or default_name
+    except KeyboardInterrupt:
+        print("\nInterrupted.")
+        sys.exit(0)
     loaded = load_secret_noise(encrypted_noise)
     if loaded:
         print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")
