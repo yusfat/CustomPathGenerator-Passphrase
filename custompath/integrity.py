@@ -389,7 +389,7 @@ EXPECTED_HASHES = {
 }
 
 # Will be filled by --baseline. Placeholder until re-baseline.
-EXPECTED_CRITICAL_ROOT = "82ea1cd7dbcb8863f9a4233df3d877261578c02890babd3e13e98fa4a7eae978"
+EXPECTED_CRITICAL_ROOT = "f092169d52ec0a5663d241d2f5fe67c41e20b860a3bd06cf6545bc58d46d66c9"
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     # 1. Detect dangerous startup files first
