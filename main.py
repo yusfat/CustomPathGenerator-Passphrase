@@ -1,4 +1,4 @@
-#main.py
+#-----main.py------
 #!/usr/bin/env python3
 
 import socket
@@ -11,15 +11,15 @@ import ssl
 import urllib.request
 import http.client
 import subprocess
-import hashlib
-import shutil
 
-# early check, if these files changed we don't run at all
+# ------------------------------------------------------------
+# Early integrity gate
+# ------------------------------------------------------------
 try:
     from custompath.integrity import security_integrity_check
     security_integrity_check(abort_on_fail=True)
 except ImportError:
-    print("[!] integrity module missing - refusing to run for safety.")
+    print("[!] integrity module missing – refusing to run for safety.")
     sys.exit(1)
 except Exception as e:
     print(f"[!] Integrity check failed unexpectedly: {e}")
@@ -31,18 +31,12 @@ _REAL_INET6 = socket.AF_INET6
 _REAL_STREAM = socket.SOCK_STREAM
 
 def has_network():
-    # only for startup, before we block sockets
+    """Used only before sockets are blocked."""
     test_targets = [
-        ("8.8.8.8", 53),
-        ("1.1.1.1", 53),
-        ("8.8.4.4", 53),
-        ("1.0.0.1", 53),
-        ("8.8.8.8", 80),
-        ("1.1.1.1", 80),
-        ("9.9.9.9", 53),
-        ("208.67.222.222", 53),
-        ("8.8.8.8", 443),
-        ("1.1.1.1", 443),
+        ("8.8.8.8", 53), ("1.1.1.1", 53), ("8.8.4.4", 53),
+        ("1.0.0.1", 53), ("8.8.8.8", 80), ("1.1.1.1", 80),
+        ("9.9.9.9", 53), ("208.67.222.222", 53),
+        ("8.8.8.8", 443), ("1.1.1.1", 443),
     ]
     test_targets_v6 = [
         ("2001:4860:4860::8888", 53, 0, 0),
@@ -50,7 +44,6 @@ def has_network():
         ("2001:4860:4860::8844", 53, 0, 0),
         ("2606:4700:4700::1001", 53, 0, 0),
     ]
-
     random.shuffle(test_targets)
     random.shuffle(test_targets_v6)
 
@@ -73,14 +66,10 @@ def has_network():
             return True
         except Exception:
             pass
-
     return False
 
-def _network_is_up_nosocket():
-    # used after we block sockets. no socket.connect here on purpose.
-    # before, guard called has_network() which uses socket.connect,
-    # and our own audit hook blocked it, so guard always saw False.
-    # that is why it stopped aborting mid-run.
+def _network_is_up_nosocket() -> bool:
+    """Used AFTER sockets are blocked. No Python socket calls."""
     try:
         out = subprocess.check_output(
             ["ip", "route"], stderr=subprocess.DEVNULL, timeout=1
@@ -97,10 +86,10 @@ def _network_is_up_nosocket():
                     continue
     except Exception:
         pass
+
     try:
         with open("/proc/net/route") as f:
-            lines = f.read().splitlines()[1:]
-            for ln in lines:
+            for ln in f.read().splitlines()[1:]:
                 parts = ln.split()
                 if len(parts) >= 2 and parts[1] != "00000000":
                     return True
@@ -147,7 +136,6 @@ threading.Thread(target=network_guard, daemon=True).start()
 def _blocked(*args, **kwargs):
     raise RuntimeError("Network blocked by policy (offline enforcement)")
 
-# block the usual ways out
 socket.socket = _blocked
 socket.create_connection = _blocked
 if hasattr(socket, "socketpair"):
@@ -185,6 +173,8 @@ from custompath.security import (
     clear_clipboard_after,
     secure_cleanup
 )
+import hashlib
+import shutil
 
 def copy_to_clipboard(text):
     cmds = []
@@ -226,7 +216,7 @@ def clear_terminal_after(seconds: int = 45):
 
 def print_header():
     print("WARNING: Use at your own risk. Always test recovery with a small amount.")
-    print("Memory wiping is best-effort only - Python cannot fully erase strings.")
+    print("Memory wiping is best-effort only – Python cannot fully erase strings.")
     print()
 
 def get_target_length():
@@ -296,7 +286,7 @@ def generate_path(paranoid: bool = False):
     if mode == "a":
         final_salt = get_advanced_salt()
     else:
-        print("\nBeginner mode - pure random")
+        print("\nBeginner mode – pure random")
         final_salt = ""
     combined = final_salt + system_salt_hex if final_salt else system_salt_hex
     print("\nGenerating path...")
@@ -410,11 +400,13 @@ def main():
     except KeyboardInterrupt:
         print("\nInterrupted.")
         sys.exit(0)
+
     loaded = load_secret_noise(encrypted_noise)
     if loaded:
         print(f"✅ Secret noise pool loaded ({len(loaded)} unique characters). Will be used more frequently.")
     else:
         print("ℹ️  No secret noise pool loaded (file missing, wrong password, bad HMAC, or skipped). Using original pools only.")
+
     paranoid = input("Enable paranoid mode? (y/n) [recommended]: ").strip().lower() == "y"
     while True:
         print("What do you want to generate?")
