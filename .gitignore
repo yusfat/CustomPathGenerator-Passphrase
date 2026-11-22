@@ -6,4 +6,5 @@ __pycache__/
 secret_noise.txt
 new_noise.txt
 *_noise.txt
-*.txtbaseline.json
+*.txt
+baseline.json
