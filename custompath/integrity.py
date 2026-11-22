@@ -316,9 +316,8 @@ EXPECTED_HASHES = {
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "20fcb750ed0add64c3fbd41ee3c8c4484fce926ba382e2ca2787ab9b8cf24c23",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "564af8aaa433113bd302e78fbadf1a9a87051587b2c94e0cb4336674684545e8",
-    "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
-    "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
+    "custompath/integrity.py": "9cee2fc01dfda4d193e84991169655efbc4898c3f46a3d0ebeb0f8fbfad49f5f",
+    "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",                                                                                        "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
 
