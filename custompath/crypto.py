@@ -2,6 +2,8 @@
 # FILE: custompath/crypto.py
 # Secret-noise loading – openssl + age support
 # Pure standard library preferred • Air-gapped safe
+# Hardened subprocess • distinct failure reasons
+# OpenSSL: -pbkdf2 only, -iter 2000000 | 4000000 (project high-tier)
 # ============================================================
 
 import secrets
@@ -57,51 +59,84 @@ FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))
 SECRET_NOISE_POOL = []
 FLAT_SECRET = tuple()
 
+# Project high-tier openssl PBKDF2 iters — exact match to existing tree values.
+# _v() uses 2_000_000; make_system_salt() uses 4_000_000.
+# Never use OpenSSL default 10000 as this project's baseline.
+_OPENSSL_PBKDF2_ITERS = (2_000_000, 4_000_000)
+
+
 def _t(s: bytes, k: int = 0x5A) -> bytes:
     return bytes(c ^ k for c in s)
 
+
 def _n() -> str:
-    raw = _t(bytes([41,63,57,40,63,46,5,52,53,51,41,63,5,109,60,105,59,99,57]))
+    raw = _t(bytes([41, 63, 57, 40, 63, 46, 5, 52, 53, 51, 41, 63, 5, 109, 60, 105, 59, 99, 57]))
     h = hashlib.sha3_256(raw).hexdigest()[:4]
     return raw.decode() + h + ".enc"
 
+
 def _v(password: str, salt: bytes) -> bytes:
-    info = _t(bytes([25,47,41,46,53,55,10,59,46,50,20,53,51,41,63,18,23,27,25,44,107]))
+    # Existing work factor — do not reduce
+    info = _t(bytes([25, 47, 41, 46, 53, 55, 10, 59, 46, 50, 20, 53, 51, 41, 63, 18, 23, 27, 25, 44, 107]))
     return hashlib.pbkdf2_hmac(
         "sha3_512",
         password.encode("utf-8"),
         salt + info,
-        2000000,
-        dklen=64
+        2_000_000,
+        dklen=64,
     )
+
 
 def _find_openssl() -> str | None:
     candidates = [
         "/usr/bin/openssl",
         "/bin/openssl",
         "/usr/local/bin/openssl",
-        "/data/data/com.termux/files/usr/bin/openssl",
+        "/data/data/com.termux/files/usr/bin/openssl",  # Termux
     ]
     for c in candidates:
         if os.path.isfile(c) and os.access(c, os.X_OK):
             return c
     return shutil.which("openssl")
 
+
 def _find_age() -> str | None:
     return shutil.which("age") or shutil.which("rage")
 
+
 def _clean_env() -> dict:
+    path_parts = ["/usr/bin", "/bin", "/usr/local/bin"]
+    termux_bin = "/data/data/com.termux/files/usr/bin"
+    if os.path.isdir(termux_bin):
+        path_parts.append(termux_bin)
     env = {
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        "PATH": ":".join(path_parts),
         "HOME": os.environ.get("HOME", ""),
         "LANG": "C",
     }
-    for bad in ("LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
-                "PYTHONPATH", "PYTHONHOME", "OPENSSL_CONF", "AGE_PASSPHRASE"):
+    for bad in (
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "OPENSSL_CONF",
+        "AGE_PASSPHRASE",
+    ):
         env.pop(bad, None)
     return env
 
+
+def _looks_like_openssl_salted(path: Path) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return f.read(8) == b"Salted__"
+    except Exception:
+        return False
+
+
 def _try_age_decrypt(path: Path, password: str) -> str | None:
+    """Optional age support. Returns decrypted text or None."""
     age_bin = _find_age()
     if not age_bin:
         return None
@@ -121,34 +156,62 @@ def _try_age_decrypt(path: Path, password: str) -> str | None:
         pass
     return None
 
+
 def _try_openssl_decrypt(path: Path, password: str) -> str | None:
+    """
+    openssl enc decrypt — project policy only:
+      -aes-256-cbc -pbkdf2 -iter {2_000_000 | 4_000_000}
+    Never MD5. Never legacy non-pbkdf2. Never OpenSSL default 10000.
+    """
     openssl_bin = _find_openssl()
     if not openssl_bin:
         return None
-    try:
-        result = subprocess.run(
-            [
-                openssl_bin, "enc", "-d",
-                "-aes-256-cbc",
-                "-pbkdf2",
-                "-in", str(path),
-                "-pass", "stdin",
-            ],
-            input=(password + "\n").encode(),
-            capture_output=True,
-            check=True,
-            timeout=30,
-            env=_clean_env(),
-        )
-        return result.stdout.decode("utf-8", errors="strict")
-    except Exception:
-        return None
+
+    pass_bytes = (password + "\n").encode()
+    env = _clean_env()
+
+    for iters in _OPENSSL_PBKDF2_ITERS:
+        try:
+            result = subprocess.run(
+                [
+                    openssl_bin, "enc", "-d",
+                    "-aes-256-cbc",
+                    "-pbkdf2",
+                    "-iter", str(iters),
+                    "-in", str(path),
+                    "-pass", "stdin",
+                ],
+                input=pass_bytes,
+                capture_output=True,
+                timeout=300,
+                env=env,
+            )
+            if result.returncode != 0:
+                continue
+            try:
+                text = result.stdout.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                continue
+            if text == "":
+                continue
+            return text
+        except Exception:
+            continue
+    return None
+
 
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     """
-    Load secret noise pool.
-    Tries both age and openssl (many .age files are actually openssl).
-    Requires valid .hmac or explicit YES for legacy mode.
+    Load secret noise pool (fail-closed, additive).
+
+    Distinct outcomes:
+      a) file missing
+      b) user skipped (Enter)
+      c) wrong password / decrypt failure
+      d) bad HMAC / missing HMAC (legacy YES only)
+
+    OpenSSL path: -pbkdf2 only, -iter in {2_000_000, 4_000_000}.
+    Prefers openssl when file header is Salted__; else age then openssl.
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -158,28 +221,43 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     path = Path(encrypted_path or expected)
 
     if not path.is_file():
+        print(f"[!] Secret noise file not found: {path}")
+        print("    Continuing without secret noise pool.")
         return []
 
     if password is None:
         try:
-            password = getpass.getpass("Enter password for secret noise file (or press Enter to skip): ")
+            password = getpass.getpass(
+                "Enter password for secret noise file (or press Enter to skip): "
+            )
         except Exception:
+            print("[!] Could not read password – secret noise skipped.")
             return []
     if not password:
+        print("[i] Secret noise skipped by user.")
         return []
 
     content = None
+    openssl_first = _looks_like_openssl_salted(path)
 
-    # Try age first
-    content = _try_age_decrypt(path, password)
-
-    # Then try openssl (covers the common case of openssl files named .age)
-    if content is None:
+    if openssl_first:
         content = _try_openssl_decrypt(path, password)
+        if content is None:
+            content = _try_age_decrypt(path, password)
+    else:
+        content = _try_age_decrypt(path, password)
+        if content is None:
+            content = _try_openssl_decrypt(path, password)
 
     if content is None:
-        print("[!] Decryption failed with both age and openssl.")
-        print("    Wrong password or unsupported format.")
+        print("[!] Decryption failed (wrong password or KDF mismatch).")
+        print("    Project policy accepts openssl enc only with:")
+        print("      -aes-256-cbc -pbkdf2 -iter 2000000   (or 4000000)")
+        print("    (no MD5, no legacy non-pbkdf2, not OpenSSL default 10000).")
+        print("    Re-encrypt on an air-gapped device if needed:")
+        print("      openssl enc -aes-256-cbc -salt -pbkdf2 -iter 2000000 \\")
+        print("        -in pool.txt -out SECRETNOISEPOOL.txt.age")
+        print("    Secret noise not loaded.")
         return []
 
     # HMAC verification
@@ -201,6 +279,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
             actual_mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
             if not hmac.compare_digest(actual_mac, expected_mac):
                 print("[!] HMAC verification failed – wrong password or tampered file.")
+                print("    Secret noise not loaded.")
                 return []
         except Exception:
             print("[!] HMAC check error – refusing.")
@@ -220,6 +299,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     print(f"[OK] Secret noise pool loaded ({len(SECRET_NOISE_POOL)} unique chars).")
     return SECRET_NOISE_POOL
 
+
 def create_hmac_file(path_str: str, password: str, content: str) -> Path | None:
     path = Path(path_str)
     hmac_path = path.with_name(path.name + ".hmac")
@@ -233,15 +313,18 @@ def create_hmac_file(path_str: str, password: str, content: str) -> Path | None:
     print(f"[OK] Wrote {hmac_path}")
     return hmac_path
 
+
 def make_system_salt():
     salt = secrets.token_bytes(64)
+    # Existing work factor — do not reduce
     stretched = hashlib.pbkdf2_hmac(
-        'sha3_512',
+        "sha3_512",
         salt,
         secrets.token_bytes(64),
-        4000000
+        4_000_000,
     )
     return stretched, stretched.hex()
+
 
 def make_random_salt(min_len=60, max_len=180, pool=None):
     if pool is None:
@@ -249,7 +332,8 @@ def make_random_salt(min_len=60, max_len=180, pool=None):
     if not pool:
         pool = FLAT_STANDARD
     length = secrets.randbelow(max_len - min_len + 1) + min_len
-    return ''.join(secrets.choice(pool) for _ in range(length))
+    return "".join(secrets.choice(pool) for _ in range(length))
+
 
 def make_session_pools():
     def _shuf(seq):
@@ -268,6 +352,7 @@ def make_session_pools():
         "secret":     _shuf(FLAT_SECRET) if FLAT_SECRET else tuple(),
         "standard":   _shuf(FLAT_STANDARD),
     }
+
 
 def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
     if session_pools is None:
@@ -294,9 +379,16 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
         parts.append(char)
         counter += 1
 
-    return ''.join(parts), counter
+    return "".join(parts), counter
 
-def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False, session_pools=None):
+
+def build_password_pool(
+    allow_emoji=True,
+    allow_invisible=True,
+    allow_space=True,
+    standard_only=False,
+    session_pools=None,
+):
     if session_pools is None:
         session_pools = make_session_pools()
 
@@ -324,8 +416,17 @@ def build_password_pool(allow_emoji=True, allow_invisible=True, allow_space=True
             clean.append(c)
     return clean if clean else list(FLAT_STANDARD)
 
-def make_password(max_len, allow_emoji=True, allow_invisible=True, allow_space=True, standard_only=False):
+
+def make_password(
+    max_len,
+    allow_emoji=True,
+    allow_invisible=True,
+    allow_space=True,
+    standard_only=False,
+):
     session_pools = make_session_pools()
-    pool = build_password_pool(allow_emoji, allow_invisible, allow_space, standard_only, session_pools)
+    pool = build_password_pool(
+        allow_emoji, allow_invisible, allow_space, standard_only, session_pools
+    )
     min_len = max(16, int(max_len * 0.95))
     return make_random_salt(min_len=min_len, max_len=max_len, pool=pool)
