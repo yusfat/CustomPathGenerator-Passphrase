@@ -3,7 +3,10 @@
 # Secret-noise loading – openssl + age support
 # Pure standard library preferred • Air-gapped safe
 # Hardened subprocess • distinct failure reasons
-# OpenSSL: -pbkdf2 only, -iter 2000000 | 4000000 (project high-tier)
+# OpenSSL: -pbkdf2 only
+#   try -iter 2000000, then 4000000 (project high-tier),
+#   then -pbkdf2 alone (historical branch argv for existing files)
+# Never MD5 • never legacy non-pbkdf2 • never lower Python 2e6/4e6
 # ============================================================
 
 import secrets
@@ -59,9 +62,8 @@ FLAT_STANDARD   = tuple(set(YUSFAT_ASCII_NOISE))
 SECRET_NOISE_POOL = []
 FLAT_SECRET = tuple()
 
-# Project high-tier openssl PBKDF2 iters — exact match to existing tree values.
-# _v() uses 2_000_000; make_system_salt() uses 4_000_000.
-# Never use OpenSSL default 10000 as this project's baseline.
+# Project high-tier openssl PBKDF2 iters (match _v / make_system_salt).
+# Historical branch used -pbkdf2 with no -iter; that form is tried last only.
 _OPENSSL_PBKDF2_ITERS = (2_000_000, 4_000_000)
 
 
@@ -159,9 +161,14 @@ def _try_age_decrypt(path: Path, password: str) -> str | None:
 
 def _try_openssl_decrypt(path: Path, password: str) -> str | None:
     """
-    openssl enc decrypt — project policy only:
-      -aes-256-cbc -pbkdf2 -iter {2_000_000 | 4_000_000}
-    Never MD5. Never legacy non-pbkdf2. Never OpenSSL default 10000.
+    openssl enc decrypt.
+
+    Order (strongest first, additive):
+      1) -pbkdf2 -iter 2000000   (match _v)
+      2) -pbkdf2 -iter 4000000   (match make_system_salt)
+      3) -pbkdf2 only            (exact historical branch argv; existing files)
+
+    Never MD5. Never non-pbkdf2. Never lower Python-side 2e6/4e6.
     """
     openssl_bin = _find_openssl()
     if not openssl_bin:
@@ -170,14 +177,18 @@ def _try_openssl_decrypt(path: Path, password: str) -> str | None:
     pass_bytes = (password + "\n").encode()
     env = _clean_env()
 
-    for iters in _OPENSSL_PBKDF2_ITERS:
+    recipes = [
+        ["-aes-256-cbc", "-pbkdf2", "-iter", "2000000"],
+        ["-aes-256-cbc", "-pbkdf2", "-iter", "4000000"],
+        ["-aes-256-cbc", "-pbkdf2"],  # historical branch decrypt line
+    ]
+
+    for extra in recipes:
         try:
             result = subprocess.run(
                 [
                     openssl_bin, "enc", "-d",
-                    "-aes-256-cbc",
-                    "-pbkdf2",
-                    "-iter", str(iters),
+                    *extra,
                     "-in", str(path),
                     "-pass", "stdin",
                 ],
@@ -210,8 +221,7 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
       c) wrong password / decrypt failure
       d) bad HMAC / missing HMAC (legacy YES only)
 
-    OpenSSL path: -pbkdf2 only, -iter in {2_000_000, 4_000_000}.
-    Prefers openssl when file header is Salted__; else age then openssl.
+    Prefers openssl when header is Salted__; else age then openssl.
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -250,11 +260,9 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
             content = _try_openssl_decrypt(path, password)
 
     if content is None:
-        print("[!] Decryption failed (wrong password or KDF mismatch).")
-        print("    Project policy accepts openssl enc only with:")
-        print("      -aes-256-cbc -pbkdf2 -iter 2000000   (or 4000000)")
-        print("    (no MD5, no legacy non-pbkdf2, not OpenSSL default 10000).")
-        print("    Re-encrypt on an air-gapped device if needed:")
+        print("[!] Decryption failed (wrong password or openssl KDF mismatch).")
+        print("    Tried: -pbkdf2 -iter 2000000, -iter 4000000, then -pbkdf2 (historical).")
+        print("    If this is an old file, confirm the password, or re-encrypt at project tier:")
         print("      openssl enc -aes-256-cbc -salt -pbkdf2 -iter 2000000 \\")
         print("        -in pool.txt -out SECRETNOISEPOOL.txt.age")
         print("    Secret noise not loaded.")
