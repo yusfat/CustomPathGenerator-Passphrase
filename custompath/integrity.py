@@ -378,8 +378,14 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 # Run:  python -m custompath.integrity --baseline
 # ============================================================
 EXPECTED_HASHES = {
-    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",                                                                                     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
-    "custompath/crypto.py": "20fcb750ed0add64c3fbd41ee3c8c4484fce926ba382e2ca2787ab9b8cf24c23",                                                                                       "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",                                                                                    "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",                                                                                    "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",                                                                                        "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",                                                                                     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
+    "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
+    "custompath/crypto.py": "8d971190f4aaae9950f30311bff7454485b8348464a3bfcc2fcf891a66dca571",
+    "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
+    "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",
+    "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
+    "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
+    "main.py": "3e77476c4fe3967602974a0a2556ce349133c51da13a537112c72b04b2980630",
 }
 
 # Will be filled by --baseline. Placeholder until re-baseline.
