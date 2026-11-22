@@ -2,7 +2,6 @@
 # FILE: custompath/crypto.py
 # Secret-noise loading – openssl + age support
 # Pure standard library preferred • Air-gapped safe
-# Hardened subprocess + fail-closed behaviour
 # ============================================================
 
 import secrets
@@ -148,10 +147,8 @@ def _try_openssl_decrypt(path: Path, password: str) -> str | None:
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     """
     Load secret noise pool.
-    - Tries age first for .age files
-    - Falls back to openssl for other files
-    - Requires valid .hmac (or explicit YES for legacy)
-    - On hard failure returns empty list (caller decides what to do)
+    Tries both age and openssl (many .age files are actually openssl).
+    Requires valid .hmac or explicit YES for legacy mode.
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -173,21 +170,19 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
 
     content = None
 
-    # Prefer age for .age files
-    if str(path).endswith(".age"):
-        content = _try_age_decrypt(path, password)
-        if content is None:
-            print("[!] Age decrypt failed. Wrong password or not a real age file.")
-            return []
+    # Try age first
+    content = _try_age_decrypt(path, password)
 
-    # Otherwise (or if age failed) try openssl
+    # Then try openssl (covers the common case of openssl files named .age)
     if content is None:
         content = _try_openssl_decrypt(path, password)
-        if content is None:
-            print("[!] Decryption failed. Wrong password or unsupported format.")
-            return []
 
-    # HMAC verification (same for both backends)
+    if content is None:
+        print("[!] Decryption failed with both age and openssl.")
+        print("    Wrong password or unsupported format.")
+        return []
+
+    # HMAC verification
     hmac_path = path.with_name(path.name + ".hmac")
     if not hmac_path.is_file():
         hmac_path = path.with_suffix(path.suffix + ".hmac")
@@ -226,7 +221,6 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     return SECRET_NOISE_POOL
 
 def create_hmac_file(path_str: str, password: str, content: str) -> Path | None:
-    """Create a matching .hmac file for an already-verified pool."""
     path = Path(path_str)
     hmac_path = path.with_name(path.name + ".hmac")
     if hmac_path.exists():
