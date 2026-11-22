@@ -244,7 +244,7 @@ For STABLE SECURE VERSION:
 
 or
 
-### How to clone a single branch from a repo (The Branch Below Is More Secure As It Has More Fail-Close Security Features Than The Main But I'm Currently Too Busy To Merge Into Man. Just copy and run everything as it is or just the below alone👇🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯👇😘👇:
+### How to clone a single branch from a repo (The Branch Below Is More Secure As It Has More Fail-Close Security Features Than The Main But I'm Currently Too Busy To Merge Into Man. Just copy and run everything as it is or just the below alone👇🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯👇😘👇:
 
     git clone --single-branch --branch B_security/integrity-layers-clear-signing-fingerprint_MAIN_CLONE https://github.com/yusfat/CustomPathGenerator-Passphrase.git
 
