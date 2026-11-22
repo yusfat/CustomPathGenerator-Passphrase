@@ -321,7 +321,7 @@ EXPECTED_HASHES = {
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
 
-# Will be filled by --baseline. Placeholder until you re-baseline.
+# Will be filled by --baseline. Placeholder until re-baseline.
 EXPECTED_CRITICAL_ROOT = "82ea1cd7dbcb8863f9a4233df3d877261578c02890babd3e13e98fa4a7eae978"
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
