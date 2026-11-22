@@ -3,6 +3,7 @@
 # Offline File Integrity Monitor for CustomPathGenerator-Passphrase
 # Pure standard library • Air-gapped safe • No network • No .env loading
 # Branch: security/integrity-layers-clear-signing-fingerprint
+# Additive: independent hashes + critical chain root of 3 files
 # ============================================================
 
 import hashlib
@@ -36,6 +37,13 @@ OPTIONAL_FILES = [
     # "custompath/some_other.py",
 ]
 
+# Only these three are chained (fixed order). integrity.py is intentionally excluded.
+CRITICAL_CHAIN = [
+    "custompath/crypto.py",
+    "custompath/generator.py",
+    "custompath/security.py",
+]
+
 FORBIDDEN_PATTERNS = (".env", ".env.example", ".env.local", ".env.production")
 
 BENIGN_PTH = frozenset({
@@ -46,10 +54,6 @@ BENIGN_PTH = frozenset({
 })
 
 # Strict match for the self-hash line in EXPECTED_HASHES.
-# Only a line that is exactly:
-#   "custompath/integrity.py": "<64 hex chars>",
-# with optional leading whitespace, trailing comma, and trailing comment
-# is skipped. Any code before or after it does NOT match, so it stays hashed.
 _SELF_HASH_LINE = re.compile(
     r'^\s*"custompath/integrity\.py"\s*:\s*"[0-9a-fA-F]{64}"\s*,?\s*(#.*)?$'
 )
@@ -74,9 +78,6 @@ def _canonical_integrity_bytes(path: Path) -> bytes:
     - Removes blank lines
     - Removes comment lines
     - Removes the line that contains the self-hash entry
-      (so the hash does not depend on its own value)
-    This fixes the egg-and-chicken problem: integrity.py can
-    contain its own hash and still verify itself. THIS DECISION AND DESIGN IS INTENTIONALLY TO MAKE IT DIFFICULT FOR ATTACKERS TO MANIPULATE THESE SENSITIVE FILES
     """
     text = path.read_text(encoding="utf-8", errors="ignore")
     lines = []
@@ -111,6 +112,22 @@ def collect_hashes(root: Path = None) -> Dict[str, str]:
         else:
             hashes[rel] = _sha3_256_file(full)
     return hashes
+
+def _critical_root(hashes: Dict[str, str]) -> str:
+    """
+    Fixed-order chain of the three most sensitive files.
+    Uses the already-computed raw hashes (no extra canonicalization).
+    """
+    h = hashlib.sha3_256()
+    for rel in CRITICAL_CHAIN:
+        digest = hashes.get(rel, "MISSING")
+        if digest in ("MISSING", "FORBIDDEN"):
+            # Force failure if any chained file is missing
+            h.update(b"MISSING_OR_FORBIDDEN")
+        else:
+            h.update(digest.encode("utf-8"))
+        h.update(b"\x00")  # domain separator
+    return h.hexdigest()
 
 def verify_integrity(
     expected: Dict[str, str] = None,
@@ -151,6 +168,9 @@ def print_baseline(root: Path = None) -> None:
     for rel, digest in sorted(hashes.items()):
         print(f'    "{rel}": "{digest}",')
     print("}")
+    print()
+    print("# === CRITICAL CHAIN ROOT (copy into EXPECTED_CRITICAL_ROOT) ===")
+    print(f'EXPECTED_CRITICAL_ROOT = "{_critical_root(hashes)}"')
     print("# =====================================================")
 
 def _combined_fingerprint(hashes: Dict[str, str]) -> str:
@@ -180,16 +200,11 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     # Ask first - emoji is optional, default No
     use_emoji = input("Include one emoji in challenge? (y/N): ").strip().lower() == "y"
 
-    # Challenge is max 5 chars total, counting emoji as 1 and space as 1.
-    # Max 2 emojis, max 1 space, always 1 special.
-    # The rest is letters/digits. Mix is picked fresh every run.
     if use_emoji:
         n_emoji = secrets.choice([0, 1, 1, 2])
     else:
         n_emoji = 0
     n_space = secrets.choice([0, 0, 1])
-    # Keep at least 2 letters/digits, so there is something to uppercase.
-    # If emoji + space would leave too little room, drop the space first.
     while 5 - 1 - n_emoji - n_space < 2:
         if n_space:
             n_space = 0
@@ -197,14 +212,9 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
             n_emoji -= 1
     n_base = 5 - 1 - n_emoji - n_space
 
-    # 1. Pick ONE special character, non-deterministically, per challenge
-    # All are on any laptop keyboard, no Shift confusion except ! @ # etc.
     special = secrets.choice(list("-_!@#$%&*+=?"))
-
-    # 2. Base: letters/digits, length depends on emoji/space picked above
     base = [secrets.choice(string.ascii_lowercase + string.digits) for _ in range(n_base)]
 
-    # 3. Non-deterministically make 1 or 2 of them UPPERCASE, at random positions
     while True:
         chars = base.copy()
         n_upper = secrets.choice([1, 2])
@@ -218,12 +228,10 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
         if 1 <= n_real <= 2:
             break
 
-    # 4. Insert the randomly chosen special once, at a random position
     pos = secrets.randbelow(len(chars) + 1)
     chars.insert(pos, special)
     challenge = "".join(chars)
 
-    # 5. Non-deterministically add up to 2 emojis, at random positions, no repetition
     if n_emoji:
         EMOJIS = [
             "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇",
@@ -237,17 +245,11 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
             "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒", "🤕", "🫡", "🫢",
             "🫣", "👍", "👎", "👏", "🙌", "🙏", "💪", "🔥", "⭐", "❤️",
         ]
-        # sample = no repetition, picks distinct emojis
         for emoji in _RNG.sample(EMOJIS, n_emoji):
             pos = secrets.randbelow(len(challenge) + 1)
             challenge = challenge[:pos] + emoji + challenge[pos:]
 
-    # 6. At most one space, never at start/end, or strip() would eat it
     if n_space:
-        # challenge is a list of chars here, emoji counts as 1 char in Python
-        # only if it is one code point - most are, the few with variation
-        # selector are still typed as one emoji by the user, so keep it simple:
-        # insert in the middle only.
         pos = secrets.randbelow(len(challenge) - 1) + 1
         challenge = challenge[:pos] + " " + challenge[pos:]
 
@@ -261,12 +263,8 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
     print()
     print("No network will be used for secret generation.")
     print(f'Type the challenge word "{challenge}" (exactly) to continue:')
-    # For convenience, you can copy and paste the challenge word above.
-    # No need to retype it by hand.
     print("Tip: for convenience, you can copy and paste the challenge word above.")
 
-    # 2 attempts, then abort. Same challenge for both tries,
-    # so a typo does not force you to start over.
     for attempt in (1, 2):
         answer = input("> ").strip()
         if answer == challenge:
@@ -288,7 +286,6 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
         print("Please run the program again when you are ready.")
         return False
 
-    # Second-device fingerprint (shown by default)
     fingerprint = _combined_fingerprint(hashes)
     print("\n" + "-" * 60)
     print("[OPTIONAL SECOND DEVICE CHECK]")
@@ -310,21 +307,23 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 
 # ============================================================
 # INTEGRITY BASELINE
-# After pasting this file you MUST update the integrity.py hash.
+# After pasting this file you MUST update the integrity.py hash
+# and the EXPECTED_CRITICAL_ROOT.
 # Run:  python -m custompath.integrity --baseline
-# then copy the new value for "custompath/integrity.py" below.
-# Canonical hash ignores its own line, so it stays stable.
 # ============================================================
 EXPECTED_HASHES = {
-    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98abfdde648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
-    "custompath/crypto.py": "20fcb750ed0add64c3fbd41ee3c8c4484fce926ba382e2ca2787ab9b8cf24c23",
+    "custompath/crypto.py": "74569a9974ed39fec90fd187cc3847ea26c67fa455410239b935f4c6298f9b38",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "b51eca57416ef87e39f47d5c3218add2718ab06fe6afb53101fb1a6363e82538",
+    "custompath/integrity.py": "3d49f780123153b544d848e3e21f5bac088ba02c0f7dce23ef1f92862f289fc8",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
 }
+
+# Will be filled by --baseline. Placeholder until you re-baseline.
+EXPECTED_CRITICAL_ROOT = "0000000000000000000000000000000000000000000000000000000000000000"
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     # 1. Detect dangerous startup files first
@@ -342,9 +341,7 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
-    # 2. Normal hash verification
-    # This runs BEFORE any secret is loaded. crypto.py is verified here,
-    # then main.py is allowed to call load_secret_noise() in crypto.py.
+    # 2. Normal individual hash verification (existing behaviour)
     ok, messages = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
 
     if not ok:
@@ -361,8 +358,25 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
-    # 3. Clear-signing + second-device check
+    # 3. NEW additive check – critical chain root
     current_hashes = collect_hashes()
+    current_root = _critical_root(current_hashes)
+    if current_root != EXPECTED_CRITICAL_ROOT:
+        print("\n" + "=" * 60)
+        print("[!] CRITICAL CORE CHAIN FAILURE")
+        print("=" * 60)
+        print("The chained root of crypto.py + generator.py + security.py")
+        print("does not match the expected value.")
+        print(f"  expected: {EXPECTED_CRITICAL_ROOT[:16]}…")
+        print(f"  got:      {current_root[:16]}…")
+        print("This indicates tampering of the most sensitive core files.")
+        print("Aborting for safety.")
+        print("=" * 60)
+        if abort_on_fail:
+            sys.exit(1)
+        return False
+
+    # 4. Clear-signing + second-device check (existing)
     if not clear_signing_and_second_device(current_hashes):
         if abort_on_fail:
             sys.exit(1)
