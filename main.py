@@ -1,4 +1,4 @@
-#-----main.py------
+#main.py
 #!/usr/bin/env python3
 
 import socket
@@ -38,14 +38,7 @@ def has_network():
         ("9.9.9.9", 53), ("208.67.222.222", 53),
         ("8.8.8.8", 443), ("1.1.1.1", 443),
     ]
-    test_targets_v6 = [
-        ("2001:4860:4860::8888", 53, 0, 0),
-        ("2606:4700:4700::1111", 53, 0, 0),
-        ("2001:4860:4860::8844", 53, 0, 0),
-        ("2606:4700:4700::1001", 53, 0, 0),
-    ]
     random.shuffle(test_targets)
-    random.shuffle(test_targets_v6)
 
     for ip, port in test_targets:
         try:
@@ -56,45 +49,40 @@ def has_network():
             return True
         except Exception:
             pass
-
-    for target in test_targets_v6:
-        try:
-            s = _REAL_SOCKET(_REAL_INET6, _REAL_STREAM)
-            s.settimeout(1.2)
-            s.connect(target)
-            s.close()
-            return True
-        except Exception:
-            pass
     return False
 
 def _network_is_up_nosocket() -> bool:
-    """Used AFTER sockets are blocked. No Python socket calls."""
+    """
+    Used AFTER sockets are blocked.
+    Designed to work on Termux / Android without root.
+    """
+    # Method 1: operstate (most reliable when readable)
     try:
-        out = subprocess.check_output(
-            ["ip", "route"], stderr=subprocess.DEVNULL, timeout=1
-        ).decode(errors="ignore")
-        if "default" in out:
-            for name in os.listdir("/sys/class/net"):
-                if name == "lo":
-                    continue
-                try:
-                    with open(f"/sys/class/net/{name}/operstate") as f:
-                        if f.read().strip() == "up":
-                            return True
-                except Exception:
-                    continue
+        for name in os.listdir("/sys/class/net"):
+            if name in ("lo", "dummy0"):
+                continue
+            try:
+                with open(f"/sys/class/net/{name}/operstate") as f:
+                    if f.read().strip() == "up":
+                        return True
+            except Exception:
+                continue
     except Exception:
         pass
 
-    try:
-        with open("/proc/net/route") as f:
-            for ln in f.read().splitlines()[1:]:
-                parts = ln.split()
-                if len(parts) >= 2 and parts[1] != "00000000":
-                    return True
-    except Exception:
-        pass
+    # Method 2: ping (works on most Termux installs)
+    for cmd in (
+        ["ping", "-c", "1", "-W", "1", "1.1.1.1"],
+        ["ping", "-c", "1", "-W", "1", "8.8.8.8"],
+        ["busybox", "ping", "-c", "1", "-W", "1", "1.1.1.1"],
+    ):
+        try:
+            r = subprocess.run(cmd, capture_output=True, timeout=2)
+            if r.returncode == 0:
+                return True
+        except Exception:
+            continue
+
     return False
 
 def network_guard():
@@ -208,7 +196,7 @@ def clear_terminal_after(seconds: int = 45):
             sys.stdout.write("\033[3J\033[H\033[2J")
             sys.stdout.flush()
             print("Terminal cleared for security.")
-            print("You can now generate another one or restart the script.")
+            print("You can now generate another one or restart the script (type y for yes or n for no).")
         except Exception:
             pass
     t = threading.Thread(target=_clear, daemon=True)
