@@ -2,6 +2,7 @@
 # FILE: custompath/crypto.py
 # Fixed secret-noise loading – primary openssl+hmac + optional age support
 # Pure standard library preferred • Air-gapped safe
+# Hardened subprocess call (PATH / environment lockdown)
 # ============================================================
 
 import secrets
@@ -11,6 +12,7 @@ import string
 import getpass
 import subprocess
 import shutil
+import os
 from pathlib import Path
 from .pools import *
 
@@ -74,18 +76,32 @@ def _v(password: str, salt: bytes) -> bytes:
         dklen=64
     )
 
+def _find_openssl() -> str | None:
+    """Locate openssl with preference for system locations."""
+    candidates = [
+        "/usr/bin/openssl",
+        "/bin/openssl",
+        "/usr/local/bin/openssl",
+        "/data/data/com.termux/files/usr/bin/openssl",  # Termux
+    ]
+    for c in candidates:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    # Fallback to PATH (less safe)
+    return shutil.which("openssl")
+
 def _try_age_decrypt(path: Path, password: str) -> str | None:
     """Optional age support. Returns decrypted text or None."""
     age_bin = shutil.which("age") or shutil.which("rage")
     if not age_bin:
         return None
     try:
-        # age can take passphrase via stdin when using -p
         result = subprocess.run(
             [age_bin, "-d", "-p", str(path)],
             input=(password + "\n").encode(),
             capture_output=True,
             timeout=30,
+            env={"PATH": "/usr/bin:/bin", "HOME": os.environ.get("HOME", "")},
         )
         if result.returncode == 0:
             return result.stdout.decode("utf-8", errors="ignore")
@@ -98,6 +114,8 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     Primary  : openssl + mandatory .hmac   (highest security)
     Fallback : openssl only (old behaviour) when no .hmac is found
                → requires explicit YES confirmation
+
+    Hardened against PATH hijacking and environment injection.
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -117,17 +135,44 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not password:
         return []
 
-    # ----- Decrypt with openssl (same as old working branch) -----
+    # ----- Hardened openssl decrypt -----
+    openssl_bin = _find_openssl()
+    if not openssl_bin:
+        print("[!] openssl binary not found. Cannot decrypt.")
+        return []
+
+    # Restrict environment aggressively
+    clean_env = {
+        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        "HOME": os.environ.get("HOME", ""),
+        "LANG": "C",
+    }
+    # Explicitly remove dangerous variables
+    for bad in ("LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+                "PYTHONPATH", "PYTHONHOME", "OPENSSL_CONF"):
+        clean_env.pop(bad, None)
+
     try:
         result = subprocess.run(
-            ["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2",
-             "-in", str(path), "-pass", "stdin"],
+            [
+                openssl_bin, "enc", "-d",
+                "-aes-256-cbc",
+                "-pbkdf2",
+                "-in", str(path),
+                "-pass", "stdin",
+            ],
             input=(password + "\n").encode(),
-            capture_output=True, check=True, timeout=30,
+            capture_output=True,
+            check=True,
+            timeout=30,
+            env=clean_env,
         )
         content = result.stdout.decode("utf-8", errors="ignore")
-    except Exception:
+    except subprocess.CalledProcessError:
         print("[!] Decryption failed. Wrong password or unsupported format.")
+        return []
+    except Exception as e:
+        print(f"[!] Decryption error: {e}")
         return []
 
     # ----- Integrity check -----
