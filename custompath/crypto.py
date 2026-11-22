@@ -1,8 +1,8 @@
 # ============================================================
 # FILE: custompath/crypto.py
-# Fixed secret-noise loading – primary openssl+hmac + optional age support
+# Secret-noise loading – openssl + age support
 # Pure standard library preferred • Air-gapped safe
-# Hardened subprocess call (PATH / environment lockdown)
+# Hardened subprocess + fail-closed behaviour
 # ============================================================
 
 import secrets
@@ -77,45 +77,81 @@ def _v(password: str, salt: bytes) -> bytes:
     )
 
 def _find_openssl() -> str | None:
-    """Locate openssl with preference for system locations."""
     candidates = [
         "/usr/bin/openssl",
         "/bin/openssl",
         "/usr/local/bin/openssl",
-        "/data/data/com.termux/files/usr/bin/openssl",  # Termux
+        "/data/data/com.termux/files/usr/bin/openssl",
     ]
     for c in candidates:
         if os.path.isfile(c) and os.access(c, os.X_OK):
             return c
-    # Fallback to PATH (less safe)
     return shutil.which("openssl")
 
+def _find_age() -> str | None:
+    return shutil.which("age") or shutil.which("rage")
+
+def _clean_env() -> dict:
+    env = {
+        "PATH": "/usr/bin:/bin:/usr/local/bin",
+        "HOME": os.environ.get("HOME", ""),
+        "LANG": "C",
+    }
+    for bad in ("LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
+                "PYTHONPATH", "PYTHONHOME", "OPENSSL_CONF", "AGE_PASSPHRASE"):
+        env.pop(bad, None)
+    return env
+
 def _try_age_decrypt(path: Path, password: str) -> str | None:
-    """Optional age support. Returns decrypted text or None."""
-    age_bin = shutil.which("age") or shutil.which("rage")
+    age_bin = _find_age()
     if not age_bin:
         return None
     try:
+        env = _clean_env()
+        env["AGE_PASSPHRASE"] = password
         result = subprocess.run(
-            [age_bin, "-d", "-p", str(path)],
-            input=(password + "\n").encode(),
+            [age_bin, "--decrypt", str(path)],
             capture_output=True,
             timeout=30,
-            env={"PATH": "/usr/bin:/bin", "HOME": os.environ.get("HOME", "")},
+            env=env,
         )
+        env["AGE_PASSPHRASE"] = ""
         if result.returncode == 0:
-            return result.stdout.decode("utf-8", errors="ignore")
+            return result.stdout.decode("utf-8", errors="strict")
     except Exception:
         pass
     return None
 
+def _try_openssl_decrypt(path: Path, password: str) -> str | None:
+    openssl_bin = _find_openssl()
+    if not openssl_bin:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                openssl_bin, "enc", "-d",
+                "-aes-256-cbc",
+                "-pbkdf2",
+                "-in", str(path),
+                "-pass", "stdin",
+            ],
+            input=(password + "\n").encode(),
+            capture_output=True,
+            check=True,
+            timeout=30,
+            env=_clean_env(),
+        )
+        return result.stdout.decode("utf-8", errors="strict")
+    except Exception:
+        return None
+
 def load_secret_noise(encrypted_path: str | None = None, password: str | None = None) -> list:
     """
-    Primary  : openssl + mandatory .hmac   (highest security)
-    Fallback : openssl only (old behaviour) when no .hmac is found
-               → requires explicit YES confirmation
-
-    Hardened against PATH hijacking and environment injection.
+    Load secret noise pool.
+    - Tries age first for .age files
+    - Falls back to openssl for other files
+    - Requires valid .hmac (or explicit YES for legacy)
+    - On hard failure returns empty list (caller decides what to do)
     """
     global SECRET_NOISE_POOL, FLAT_SECRET
     SECRET_NOISE_POOL = []
@@ -135,55 +171,30 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     if not password:
         return []
 
-    # ----- Hardened openssl decrypt -----
-    openssl_bin = _find_openssl()
-    if not openssl_bin:
-        print("[!] openssl binary not found. Cannot decrypt.")
-        return []
+    content = None
 
-    # Restrict environment aggressively
-    clean_env = {
-        "PATH": "/usr/bin:/bin:/usr/local/bin",
-        "HOME": os.environ.get("HOME", ""),
-        "LANG": "C",
-    }
-    # Explicitly remove dangerous variables
-    for bad in ("LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES",
-                "PYTHONPATH", "PYTHONHOME", "OPENSSL_CONF"):
-        clean_env.pop(bad, None)
+    # Prefer age for .age files
+    if str(path).endswith(".age"):
+        content = _try_age_decrypt(path, password)
+        if content is None:
+            print("[!] Age decrypt failed. Wrong password or not a real age file.")
+            return []
 
-    try:
-        result = subprocess.run(
-            [
-                openssl_bin, "enc", "-d",
-                "-aes-256-cbc",
-                "-pbkdf2",
-                "-in", str(path),
-                "-pass", "stdin",
-            ],
-            input=(password + "\n").encode(),
-            capture_output=True,
-            check=True,
-            timeout=30,
-            env=clean_env,
-        )
-        content = result.stdout.decode("utf-8", errors="ignore")
-    except subprocess.CalledProcessError:
-        print("[!] Decryption failed. Wrong password or unsupported format.")
-        return []
-    except Exception as e:
-        print(f"[!] Decryption error: {e}")
-        return []
+    # Otherwise (or if age failed) try openssl
+    if content is None:
+        content = _try_openssl_decrypt(path, password)
+        if content is None:
+            print("[!] Decryption failed. Wrong password or unsupported format.")
+            return []
 
-    # ----- Integrity check -----
-    hmac_path = path.with_suffix(path.suffix + ".hmac") if path.suffix else path.with_suffix(".hmac")
+    # HMAC verification (same for both backends)
+    hmac_path = path.with_name(path.name + ".hmac")
     if not hmac_path.is_file():
-        hmac_path = path.with_name(path.name + ".hmac")
+        hmac_path = path.with_suffix(path.suffix + ".hmac")
     if not hmac_path.is_file():
         hmac_path = path.with_suffix(".hmac")
 
     if hmac_path.is_file():
-        # Strict path – full HMAC verification
         try:
             data = hmac_path.read_bytes()
             if len(data) < 16 + 32:
@@ -200,7 +211,6 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
             print("[!] HMAC check error – refusing.")
             return []
     else:
-        # Fallback – old behaviour (no .hmac)
         print("[!] No .hmac file found.")
         print("    Loading WITHOUT integrity verification (legacy mode).")
         print("    This is less secure. Prefer creating a .hmac file.")
@@ -214,6 +224,20 @@ def load_secret_noise(encrypted_path: str | None = None, password: str | None = 
     FLAT_SECRET = tuple(SECRET_NOISE_POOL)
     print(f"[OK] Secret noise pool loaded ({len(SECRET_NOISE_POOL)} unique chars).")
     return SECRET_NOISE_POOL
+
+def create_hmac_file(path_str: str, password: str, content: str) -> Path | None:
+    """Create a matching .hmac file for an already-verified pool."""
+    path = Path(path_str)
+    hmac_path = path.with_name(path.name + ".hmac")
+    if hmac_path.exists():
+        print(f"[!] {hmac_path} already exists – not overwriting.")
+        return None
+    salt = secrets.token_bytes(16)
+    key = _v(password, salt)
+    mac = hmac.new(key, content.encode("utf-8"), hashlib.sha3_512).digest()
+    hmac_path.write_bytes(salt + mac)
+    print(f"[OK] Wrote {hmac_path}")
+    return hmac_path
 
 def make_system_salt():
     salt = secrets.token_bytes(64)
@@ -257,7 +281,6 @@ def make_noise(salt_bytes, counter, min_len=1, max_len=4, session_pools=None):
 
     length = secrets.randbelow(max_len - min_len + 1) + min_len
     parts = []
-
     candidates = []
     candidates.extend(session_pools["invisibles"])
     candidates.extend(session_pools["spaces"])
