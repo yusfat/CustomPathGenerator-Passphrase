@@ -3,10 +3,11 @@
 # Offline File Integrity Monitor for CustomPathGenerator-Passphrase
 # Pure standard library • Air-gapped safe • No network • No .env loading
 # Branch: security/integrity-layers-clear-signing-fingerprint
-# Additive: independent hashes + critical chain root of 3 files
+# Additive: independent hashes + critical chain root + external baseline.json
 # ============================================================
 
 import hashlib
+import json
 import os
 import re
 import sys
@@ -14,7 +15,7 @@ import secrets
 import string
 import random
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 _RNG = random.SystemRandom()
 
@@ -53,13 +54,13 @@ BENIGN_PTH = frozenset({
     "setuptools-precedence.pth",
 })
 
-# Strict match for the self-hash line in EXPECTED_HASHES.
-_SELF_HASH_LINE = re.compile(
-    r'^\s*"custompath/integrity\.py"\s*:\s*"[0-9a-fA-F]{64}"\s*,?\s*(#.*)?$'
-)
-
 def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+def _baseline_json_path(root: Path = None) -> Path:
+    if root is None:
+        root = _project_root()
+    return root / "baseline.json"
 
 def _sha3_256_file(path: Path) -> str:
     h = hashlib.sha3_256()
@@ -74,23 +75,28 @@ def _is_forbidden(path: Path) -> bool:
 
 def _canonical_integrity_bytes(path: Path) -> bytes:
     """
-    Canonical form of integrity.py used for self-hash.
-    - Removes blank lines
-    - Removes comment lines
-    - Removes the line that contains the self-hash entry
+    Canonical form of integrity.py = CODE ONLY.
+    Skips the entire EXPECTED_HASHES dict + EXPECTED_CRITICAL_ROOT line.
+    Formatting / hash values inside the baseline must NEVER affect the hash.
     """
     text = path.read_text(encoding="utf-8", errors="ignore")
-    lines = []
+    out = []
+    in_baseline = False
     for ln in text.splitlines():
         stripped = ln.strip()
-        if not stripped:
+        if stripped.startswith("EXPECTED_HASHES"):
+            in_baseline = True
             continue
-        if stripped.startswith("#"):
+        if in_baseline:
+            if stripped.startswith("}"):
+                in_baseline = False
             continue
-        if _SELF_HASH_LINE.match(ln):
+        if stripped.startswith("EXPECTED_CRITICAL_ROOT"):
             continue
-        lines.append(ln.rstrip())
-    return ("\n".join(lines) + "\n").encode("utf-8")
+        # Do NOT strip comments / blank lines here - that loosens security.
+        # Just normalize line endings and trailing spaces.
+        out.append(ln.rstrip())
+    return ("\n".join(out) + "\n").encode("utf-8")
 
 def _sha3_256_canonical(path: Path) -> str:
     return hashlib.sha3_256(_canonical_integrity_bytes(path)).hexdigest()
@@ -159,6 +165,66 @@ def verify_integrity(
         if rel not in expected and current[rel] not in ("MISSING", "FORBIDDEN"):
             messages.append(f"[WARN] Unexpected file in critical set: {rel}")
     ok = not any(m.startswith("[FAIL]") for m in messages)
+    return ok, messages
+
+# ============================================================
+# EXTERNAL BASELINE - OUT-OF-BAND ROOT OF TRUST
+# baseline.json lives OUTSIDE the checked files.
+# Keep a copy on your phone / USB / paper. If attacker edits
+# EXPECTED_HASHES inside integrity.py, baseline.json still fails.
+# ============================================================
+
+def build_baseline(root: Path = None) -> Dict:
+    if root is None:
+        root = _project_root()
+    hashes = collect_hashes(root)
+    return {
+        "hashes": {k: hashes[k] for k in sorted(hashes)},
+        "critical_root": _critical_root(hashes),
+        "fingerprint": _combined_fingerprint(hashes),
+    }
+
+def save_baseline_json(root: Path = None) -> Path:
+    if root is None:
+        root = _project_root()
+    data = build_baseline(root)
+    p = _baseline_json_path(root)
+    p.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return p
+
+def load_baseline_json(root: Path = None) -> Optional[Dict]:
+    p = _baseline_json_path(root)
+    if not p.is_file():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+def verify_external_baseline(root: Path = None) -> Tuple[bool, List[str]]:
+    """Compare current files against baseline.json if it exists. No-op if missing."""
+    if root is None:
+        root = _project_root()
+    data = load_baseline_json(root)
+    if data is None:
+        return True, ["[INFO] No baseline.json found - skipping external check"]
+    current = collect_hashes(root)
+    current_root = _critical_root(current)
+    messages = []
+    expected_hashes = data.get("hashes", {})
+    for rel, exp in expected_hashes.items():
+        cur = current.get(rel, "MISSING")
+        if cur != exp:
+            messages.append(f"[FAIL] External baseline mismatch: {rel}")
+            messages.append(f"       expected {str(exp)[:16]}…")
+            messages.append(f"       got      {str(cur)[:16]}…")
+    if data.get("critical_root") != current_root:
+        messages.append("[FAIL] External baseline CRITICAL_ROOT mismatch")
+        messages.append(f"       expected {str(data.get('critical_root'))[:16]}…")
+        messages.append(f"       got      {current_root[:16]}…")
+    ok = not any(m.startswith("[FAIL]") for m in messages)
+    if ok:
+        messages.append("[OK] External baseline.json matches")
     return ok, messages
 
 def print_baseline(root: Path = None) -> None:
@@ -311,11 +377,12 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 # and the EXPECTED_CRITICAL_ROOT.
 # Run:  python -m custompath.integrity --baseline
 # ============================================================
-EXPECTED_HASHES = {                                                                          "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
+EXPECTED_HASHES = {
+    "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
     "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",
     "custompath/crypto.py": "20fcb750ed0add64c3fbd41ee3c8c4484fce926ba382e2ca2787ab9b8cf24c23",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
-    "custompath/integrity.py": "b2dfcf1ce05f600f25dcd9a9189e3411bed160801ec22542b88ed55ff3f852d7",
+    "custompath/integrity.py": "PLACEHOLDER",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
     "main.py": "8c563083f3a96a660a26c4eab1dbe4e6a47c701a17b37ec11387710b3787e1c9",
@@ -357,7 +424,7 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
-    # 3. NEW additive check – critical chain root
+    # 3. Critical chain root - in-file
     current_hashes = collect_hashes()
     current_root = _critical_root(current_hashes)
     if current_root != EXPECTED_CRITICAL_ROOT:
@@ -375,6 +442,24 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
             sys.exit(1)
         return False
 
+    # 3b. External baseline.json - out-of-band, if it exists
+    ext_ok, ext_msgs = verify_external_baseline()
+    for m in ext_msgs:
+        print(m)
+    if not ext_ok:
+        print("\n" + "=" * 60)
+        print("[!] EXTERNAL BASELINE FAILURE")
+        print("=" * 60)
+        for m in ext_msgs:
+            print(m)
+        print("baseline.json does not match current files.")
+        print("Either files were tampered, or baseline.json is stale.")
+        print("If YOU changed code intentionally, re-export baseline.json")
+        print("=" * 60)
+        if abort_on_fail:
+            sys.exit(1)
+        return False
+
     # 4. Clear-signing + second-device check (existing)
     if not clear_signing_and_second_device(current_hashes):
         if abort_on_fail:
@@ -386,12 +471,36 @@ def security_integrity_check(abort_on_fail: bool = True) -> bool:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Offline integrity monitor")
-    parser.add_argument("--baseline", action="store_true", help="Print current baseline")
-    parser.add_argument("--check", action="store_true", help="Run integrity check")
+    parser.add_argument("--baseline", action="store_true", help="Print current baseline for pasting into EXPECTED_HASHES")
+    parser.add_argument("--export-baseline", action="store_true", help="Write baseline.json (external out-of-band copy)")
+    parser.add_argument("--check", action="store_true", help="Run FULL integrity check: individual + chain + external")
     args = parser.parse_args()
 
     if args.baseline:
         print_baseline()
+    elif args.export_baseline:
+        p = save_baseline_json()
+        print(f"Wrote {p}")
+        print("Copy this file to your phone / USB / paper. Do NOT commit it if you don't want it public.")
+        print("Fingerprint:", build_baseline()["fingerprint"])
+    elif args.check:
+        # FULL check - same as security_integrity_check but without clear-signing prompt
+        ok, msgs = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
+        for m in msgs:
+            print(m)
+        current = collect_hashes()
+        cur_root = _critical_root(current)
+        if cur_root != EXPECTED_CRITICAL_ROOT:
+            print(f"[FAIL] CRITICAL_ROOT mismatch: expected {EXPECTED_CRITICAL_ROOT[:16]}… got {cur_root[:16]}…")
+            ok = False
+        else:
+            print("[OK] CRITICAL_ROOT matches")
+        ext_ok, ext_msgs = verify_external_baseline()
+        for m in ext_msgs:
+            print(m)
+        ok = ok and ext_ok
+        print("Result:", "PASS" if ok else "FAIL")
+        sys.exit(0 if ok else 1)
     else:
         ok, msgs = verify_integrity(EXPECTED_HASHES if EXPECTED_HASHES else None)
         for m in msgs:
