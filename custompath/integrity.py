@@ -379,7 +379,7 @@ def clear_signing_and_second_device(hashes: Dict[str, str]) -> bool:
 # ============================================================
 EXPECTED_HASHES = {
     "custompath/__init__.py": "4e55f47f527dc052dd55d5262b7c5656c6334cb98a692de648d69ed9657fa024",
-    "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",                                                                                       "custompath/crypto.py": "8d46d6ea54d11a510d64530e943811369b70323b37fd0449bdd2b986bb50d1cb",
+    "custompath/config.py": "b53e35566926bacbd26ba235e642fefda8f5dcbf99be9d4cad3b63b68615419d",                                                                                       "custompath/crypto.py": "c240b52b19a376ed8916903d0755e26d227b0663c1c4c1040406aaa8356f6ff9",
     "custompath/generator.py": "198d1e092162025ca85382ada63d783c26125f8198af4e6478b82ee386d4ce3f",
     "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
@@ -388,7 +388,7 @@ EXPECTED_HASHES = {
 }
 
 # Will be filled by --baseline. Placeholder until re-baseline.
-EXPECTED_CRITICAL_ROOT = "d15f8bd5b8d6ec0dec38f41e3fcb2f311a1fcea4a24c6f983ed28b239eccd5a5"
+EXPECTED_CRITICAL_ROOT = "30dede748bfcbae70eaea45521ae69b51902bc61d6dbedc6c0499e22562f2a85"
 
 def security_integrity_check(abort_on_fail: bool = True) -> bool:
     # 1. Detect dangerous startup files first
