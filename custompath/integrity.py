@@ -384,7 +384,7 @@ EXPECTED_HASHES = {
     "custompath/integrity.py": "0aede505aee8fe6236d78c64e16727ea661fd34d04bf8f5f7a5c177d6f4aed54",
     "custompath/pools.py": "8e81938bb7c3ae6ed1a9e3b82bf8345e824d16a67055fb2da9d4c760663f25cc",
     "custompath/security.py": "53756e4b1ffac9e54445614efcb5b13a65ea711b3a15abf4c9414937f9ab22ee",
-    "main.py": "217d0ffc4068ea89b13825b94f6424ba83ea7244a191639fa026f7d3c61c5474",
+    "main.py": "c2552ab314ffc4e64165e66dab9e670ba51bd7a1b436d8ef41336629e42fd191",
 }
 
 # Will be filled by --baseline. Placeholder until re-baseline.
