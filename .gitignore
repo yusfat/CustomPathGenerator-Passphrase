@@ -8,3 +8,5 @@ new_noise.txt
 *_noise.txt
 *.txt
 baseline.json
+*.hmac
+*SECRETNOISEPOOL*
