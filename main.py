@@ -1,5 +1,6 @@
-#main.py
 #!/usr/bin/env python3
+# main.py – CustomPathGenerator-Passphrase
+# Single entry point: runs all security checks, then asks CLI or Yusfat Window
 
 import socket
 import sys
@@ -11,6 +12,8 @@ import ssl
 import urllib.request
 import http.client
 import subprocess
+import hashlib
+import shutil
 
 # ------------------------------------------------------------
 # Early integrity gate
@@ -56,7 +59,6 @@ def _network_is_up_nosocket() -> bool:
     Used AFTER sockets are blocked.
     Designed to work on Termux / Android without root.
     """
-    # Method 1: operstate (most reliable when readable)
     try:
         for name in os.listdir("/sys/class/net"):
             if name in ("lo", "dummy0"):
@@ -70,7 +72,6 @@ def _network_is_up_nosocket() -> bool:
     except Exception:
         pass
 
-    # Method 2: ping (works on most Termux installs)
     for cmd in (
         ["ping", "-c", "1", "-W", "1", "1.1.1.1"],
         ["ping", "-c", "1", "-W", "1", "8.8.8.8"],
@@ -161,8 +162,6 @@ from custompath.security import (
     clear_clipboard_after,
     secure_cleanup
 )
-import hashlib
-import shutil
 
 def copy_to_clipboard(text):
     cmds = []
@@ -375,7 +374,8 @@ def generate_password(paranoid: bool = False):
     clear_terminal_after(45)
     secure_cleanup(result)
 
-def main():
+def run_cli():
+    """Original interactive CLI flow."""
     try:
         sys.stdout.write("\033[3J\033[H\033[2J")
         sys.stdout.flush()
@@ -412,6 +412,32 @@ def main():
         if input("Generate another one? (y/n): ").strip().lower() != "y":
             print("\nStay safe.")
             break
+
+def main():
+    # After all network + integrity checks have already passed above
+    print("Interface preference")
+    print("1. CLI (terminal)")
+    print("2. Yusfat Window (GUI)")
+    while True:
+        pref = input("Choose (1/2) [default 1]: ").strip() or "1"
+        if pref in ("1", "2"):
+            break
+        print("Please enter 1 or 2.")
+
+    if pref == "2":
+        try:
+            from gui import run_yusfat_window
+            run_yusfat_window()
+        except ImportError as e:
+            print(f"[!] GUI not available: {e}")
+            print("Falling back to CLI...")
+            run_cli()
+        except Exception as e:
+            print(f"[!] Failed to start Yusfat Window: {e}")
+            print("Falling back to CLI...")
+            run_cli()
+    else:
+        run_cli()
 
 if __name__ == "__main__":
     try:
