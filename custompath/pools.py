@@ -289,7 +289,7 @@ F‌‌‍‍ㅤㅤ‍‍‌G‌‌‍‍ㅤㅤ‍‍‌H‌‌‍‍ㅤㅤ‍�
 
 
 
-Seedphrase passphrase private key 0x   API , apikey password 🔑              HardToHackEmailAccount.YouCannotHackThis.Moody@slmail.me      +        Nobody_Can_Hack_Me.Unguarded@aleeas.com  🎉🚀🌈🍕🌟🐶🐱🏠📚💻🎊🍔🐻🎤🌪🐼🌴🐔🚗🌻🐷🎁📱🚲🐸🌺🎭🍟🌼🐴🌹🌽🏆🎯🐳🎃🐋🎄🌍🐬🎆
+Seedphrase passphrase private key 0x   API , apikey password 🔑              my primary binance login email(s): HardToHackEmailAccount.YouCannotHackThis.moody446@slmail.me      +        Nobody_Can_Hack_Me.Unguarded149@aleeas.com  🎉🚀🌈🍕🌟🐶🐱🏠📚💻🎊🍔🐻🎤🌪🐼🌴🐔🚗🌻🐷🎁📱🚲🐸🌺💉😐💊🎭🍟🌼🐴🌹🌽🏆🎯🐳🎃🐋🎄🌍🐬🎆
 
 ♣™🦾♪🪂💯🧚ㅤ‍ㅤ‌‌ㅤㅤㅤ‌ㅤ‍‍‍‍‌‌‌‌‍ㅤㅤ‍‍‌ㅤ‍‍‌ㅤ‌ㅤㅤ‍ㅤ‍ㅤ‌‌‌‌ㅤ‌‍ㅤ‍ㅤㅤ‌‍‍‍ㅤ‍‌ㅤㅤين ص谷^]. $³x⁹🌍⅞🌎👇👆⁹📨sy|١ภΞτϣΨмΞ      $ақшаଓଡ଼ିଆиронਪੰਜਾਬੀ   匚_૪τΛ+ᐱᑕܡܠܟܐܕܘܫܐᐃᐧᐣ` `રાજા`שלוםעליજ`រាជានិពន្ធプレル市ヶ€谷^].@i!yG Uu💯💥🤣🪴🥰🍊🧡⅘❌👋₱€₹™`²€♪🫳🫴🦿🦵🦗🐜🪼🦋🐛🐡🦤🦆🦈c0Oi    ^B!#ZsnMqngLnOMQmBVFhH#uRD  av0AspX*S^ ⅜ રાજાשל@ZV રાજાשלוםעליજ រាជានិពន្ធプレル市ヶ€谷  ⁵हिन्दी<日本語>ಕನ್ನಡ?کشҚазақша\ខ         API Keys (sk-...), Passwords (DB_PASSWORD), .env file, Private Keys (id_rsa, *.pem), Database URL (mongodb:user:pass@host), Access Tokens (Bearer-JWT), User Data (emails-phones), Cloud Keys (AWS_SECRET) phone number +⁴⁴ email address admin password credit cards ew more: Auth Client Secret, Webhook Secret, Encryption Salt Keys, Session Secret (JWT_SECRET), Payment Webhook Keys (Stripe), Firebase Config (private), Internal IP Addresses 
 

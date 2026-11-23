@@ -1,6 +1,6 @@
 # ============================================================
 # FILE: custompath/security.py
-# Strengthened version – improved detection, lower false positives
+# Strengthened version - improved detection, lower false positives, psutil kept & improved, better fallbacks
 # ============================================================
 
 import sys
@@ -79,14 +79,14 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
     found_high = False
     found_low = False
 
-    # psutil path
+    # Preferred path: psutil
     try:
         import psutil
-        for proc in psutil.process_iter(["name", "cmdline", "exe"]):
+        for proc in psutil.process_iter(["name", "cmdline", "exe", "ppid"]):
             try:
                 name = (proc.info.get("name") or "").lower()
-                cmd  = " ".join(proc.info.get("cmdline") or []).lower()
-                exe  = (proc.info.get("exe") or "").lower()
+                cmd = " ".join(proc.info.get("cmdline") or []).lower()
+                exe = (proc.info.get("exe") or "").lower()
 
                 for s in high_confidence:
                     if s in name or s in cmd or s in exe:
@@ -98,8 +98,26 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
                 for s in low_confidence:
                     if s in name or s in cmd or s in exe:
                         found_low = True
+
+                try:
+                    parent = psutil.Process(proc.info.get("ppid") or 0)
+                    pname = (parent.name() or "").lower()
+                    for s in high_confidence:
+                        if s in pname:
+                            found_high = True
+                            break
+                    for s in low_confidence:
+                        if s in pname:
+                            found_low = True
+                except Exception:
+                    pass
+
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
+
+        if found_high:
+            return True
+
     except ImportError:
         pass
     except Exception:
@@ -120,6 +138,21 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
                             break
                     if found_high:
                         break
+                    cmdline = ""
+                    try:
+                        with open(f"/proc/{pid}/cmdline", "rb") as f:
+                            cmdline = f.read().replace(b"\x00", b" ").decode("utf-8", "ignore").lower()
+                    except Exception:
+                        pass
+                    for s in high_confidence:
+                        if s in comm or s in cmdline:
+                            found_high = True
+                            break
+                    if found_high:
+                        break
+                    for s in low_confidence:
+                        if s in comm or s in cmdline:
+                            found_low = True
                 except Exception:
                     continue
         except Exception:
@@ -129,7 +162,7 @@ def is_terminal_recorder_present(strict: bool = False) -> bool:
         return True
 
     if strict:
-        return found_high   # only high-confidence in strict mode
+        return found_high
 
     return found_high or found_low
 
@@ -177,9 +210,11 @@ def secure_cleanup(*secrets: Any) -> None:
             except Exception:
                 pass
             s = "\0" * len(s)
+
         elif isinstance(s, bytearray):
             for i in range(len(s)):
                 s[i] = 0
+
         elif isinstance(s, bytes):
             try:
                 ba = bytearray(s)
@@ -187,6 +222,7 @@ def secure_cleanup(*secrets: Any) -> None:
                     ba[i] = 0
             except Exception:
                 pass
+
     del secrets
     for _ in range(5):
         gc.collect()
