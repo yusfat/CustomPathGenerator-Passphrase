@@ -240,6 +240,13 @@ The branch below currently contains the strongest fail-closed integrity, clear-s
 
 ```bash
 
+git clone --branch v2.0.0 --single-branch https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+cd CustomPathGenerator-Passphrase
+python -m custompath.integrity --export-baseline
+python main.py     # expected fingerprint: 9acf-d455-5bbd-6d1d
+
+or
+
 git clone --single-branch --branch B_security/integrity-layers-clear-signing-fingerprint_MAIN_CLONE https://github.com/yusfat/CustomPathGenerator-Passphrase.git
 cd CustomPathGenerator-Passphrase
 python -m custompath.integrity --export-baseline
