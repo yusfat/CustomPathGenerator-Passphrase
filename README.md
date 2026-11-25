@@ -234,34 +234,48 @@ BTC Address: 377GSHdGNZtxxvcu8SvoYurqeCoJWCgzre
 
 ## How to run
 
-For STABLE SECURE VERSION:
+### Recommended (most secure branch + safe sequence) - NOTE: Branch B_security/integrity-layers-clear-signing-fingerprint_MAIN_CLONE and the main branch are exactly the same copy (automatically the same fingerprint: 9acf-d455-5bbd-6d1d
 
-    git clone --branch v1.4-stable-offline-hardened https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator-Passphrase
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python3 main.py
+The branch below currently contains the strongest fail-closed integrity, clear-signing, network isolation and baseline features:
 
-or
+```bash
 
-### How to clone a single branch from a repo (The Branch Below Is More Secure As It Has More Fail-Close Security Features Than The Main But I'm Currently Too Busy To Merge Into Man. Just copy and run everything as it is or just the below alone👇🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯🎯👇😘👇[OPTIONAL DEVICE CHECK] , Fingerprint:  f140-7fdd-30a7-83fa (if the device fingerprint/files integrity check is not *f140-7fdd-30a7-83fa* , then abort as the files/code must have been tampered, modified, or become malicious:
+git clone --single-branch --branch B_security/integrity-layers-clear-signing-fingerprint_MAIN_CLONE https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+cd CustomPathGenerator-Passphrase
+python -m custompath.integrity --export-baseline
+python main.py
 
-    git clone --single-branch --branch B_security/integrity-layers-clear-signing-fingerprint_MAIN_CLONE https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+Current expected fingerprint for this branch:
 
+9acf-d455-5bbd-6d1d
 
-or
+If the fingerprint shown by the tool is not 9acf-d455-5bbd-6d1d, abort — the files have been modified or tampered with.
 
-    git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator-Passphrase
-    python3 -m venv .venv
-    source .venv/bin/activate
-    python3 main.py               # python main.py also works, always 
+Safe run sequence (recommended every time after clone or git pull)
+bash
+python -m custompath.integrity --export-baseline
+python main.py
 
-or, if you do not want to use a virtual environment:
+--export-baseline creates/refreshes a local baseline.json that matches the exact files on your machine.
 
-    git clone https://github.com/yusfat/CustomPathGenerator-Passphrase.git
-    cd CustomPathGenerator-Passphrase
-    python3 main.py
+baseline.json is deliberately git-ignored (out-of-band root of trust).
+This prevents false “external baseline mismatch” errors caused by an old or leftover baseline.json.
+
+You can also use a virtual environment if you prefer:
+
+bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m custompath.integrity --export-baseline
+python main.py
+Alternative (older stable tag)
+
+bash
+git clone --branch v1.4-stable-offline-hardened https://github.com/yusfat/CustomPathGenerator-Passphrase.git
+cd CustomPathGenerator-Passphrase
+python3 -m venv .venv
+source .venv/bin/activate
+python3 main.py
 
 A short pause during system-salt PBKDF2 is normal (as that was intentionally designed to slow down offline attacker). A pause during system-salt processing may be expected. Check the source code and dependencies before using the program with sensitive material.
 
